@@ -120,13 +120,17 @@ validated via `attest.contracts.input.validate_and_normalize` before being writt
 - `config.json`: vendors, per-vendor model+version, per-vendor prompt version,
   aggregation rule (only `"boundary_dispersion"` is implemented in the kernel today;
   `majority`/`unanimity` are recognized names but raise `NotImplementedError`), `tau`
-  (currently `0.75`, treat as tunable and report whatever is used). Validated against the
-  kernel's own loader (`attest.cli._load_ensemble_config`) — see `config.json`'s `_notes`.
-- One wiring the kernel doesn't do yet, worth knowing before relying on it: `prompt_version`
-  is currently a provenance label only. `attest.vendors.registry` never forwards a
-  configured prompt to the raters, so every vendor runs the kernel's hardcoded
-  `DEFAULT_SCREENING_PROMPT` regardless of this repo's `config.json`. Don't bump
-  `prompt_version` for a real prompt change until the kernel threads it through.
+  (currently `0.75`, treat as tunable and report whatever is used), and `track_prompts`.
+  Validated against the kernel's own loader (`attest.cli._load_ensemble_config`) — see
+  `config.json`'s `_notes`.
+- Each vendor is screened with this review's own published eligibility criteria, not a
+  generic prompt: `config.json`'s `track_prompts` maps each `reviews.toml` review name to
+  its criteria text (verbatim from SYNERGY's `datasets.toml`, reflowed to prose), and the
+  kernel's `Config.prompt_for_track` resolves the right one per record from `record.track`
+  (which `build_goldset.py` sets to the review name) — so one `attest screen` run correctly
+  screens all five reviews at once. `prompt_version` is still a provenance label only
+  (`attest.provenance.config.VendorSpec` doesn't read it back), so keep it bumped by hand
+  whenever `track_prompts` changes, or it will misrepresent what ran.
 
 ---
 
@@ -195,7 +199,7 @@ than describing it hypothetically.
 
 ## §7 Pre-run checklist
 
-- [ ] Four distinct vendor families configured in `.env`; `config.json` has `x = 4`, a stated `tau`, versioned prompts.
+- [ ] Four distinct vendor families configured in `.env`; `config.json` has `x = 4`, a stated `tau`, versioned prompts, and a `track_prompts` entry for every review in `reviews.toml`.
 - [ ] Audit budget chosen from the recall precision to be claimed.
 - [ ] `data/run/` frozen immediately after `screen`; downstream stages offline; `run/` archived (LFS or data release).
 - [ ] Two epochs run to exercise per-epoch reporting.

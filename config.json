@@ -3,26 +3,33 @@
     "anthropic": {
       "model": "claude-sonnet-5",
       "model_version": "as-of-2026-08-02",
-      "prompt_version": "v1"
+      "prompt_version": "v2"
     },
     "openai": {
       "model": "gpt-4o",
       "model_version": "as-of-2026-08-02",
-      "prompt_version": "v1"
+      "prompt_version": "v2"
     },
     "google": {
       "model": "gemini-2.0-flash",
       "model_version": "as-of-2026-08-02",
-      "prompt_version": "v1"
+      "prompt_version": "v2"
     },
     "mistral": {
       "model": "mistral-large-latest",
       "model_version": "as-of-2026-08-02",
-      "prompt_version": "v1"
+      "prompt_version": "v2"
     }
   },
   "aggregation": "boundary_dispersion",
   "tau": 0.75,
+  "track_prompts": {
+    "van_de_Schoot_2018": "You are screening a record for a systematic review on longitudinal trajectories of post-traumatic stress symptoms. Read the title and abstract and decide whether the record should be included, applying this review's published eligibility criteria (SYNERGY dataset; original review DOI 10.1080/00273171.2017.1412293): the study must be a longitudinal study with at least three measurement waves measuring PTSD; PTSD must be measured on a continuous scale via an interview or questionnaire; the study must use a clustering method (LGMM, LCGA, or hierarchical cluster analysis); and the traumatic stress symptoms must follow events that fulfill DSM-IV criterion A1 for PTSD or acute stress disorder. Respond with exactly one token: -1 to exclude, 0 if related but uncertain, or 1 to include.",
+    "Appenzeller-Herzog_2019": "You are screening a record for a systematic review on drug treatments for Wilson's disease. Read the title and abstract and decide whether the record should be included, applying this review's published eligibility criteria (SYNERGY dataset; original review DOI 10.1111/liv.14179): patients with Wilson's disease (WD) of any age or stage; the study drug must be one of four established therapies (D-penicillamine, trientine, TTM, or zinc), compared against placebo, no treatment, or another qualifying treatment (matched doses across arms; concomitant therapies identical across arms); the study must report at least one of mortality, orthotopic liver transplantation, neurological symptoms, liver-related symptoms, adverse effects, or frequency of treatment discontinuation; and the study must be a prospective or retrospective study, including randomized, non-randomized controlled trials or comparative observational studies, in English, German, Dutch, French, Spanish, or Portuguese. Exclude animal studies, case reports, case series, cross-sectional studies, before-after studies, reviews, letters, abstract-only publications, editorials, diagnostic or other testing studies, and non-controlled studies. Respond with exactly one token: -1 to exclude, 0 if related but uncertain, or 1 to include.",
+    "Hall_2012": "You are screening a record for a systematic literature review on software fault prediction. Read the title and abstract and decide whether the record should be included, applying this review's published eligibility criteria (SYNERGY dataset; original review DOI 10.1109/TSE.2011.103): the paper must be published in English as a Journal paper or Conference proceedings; it must be an empirical study focused on predicting faults in units of a software system, with faults in code as the main output (dependent variable). Exclude papers focused on testing, fault injection, inspections, reliability modelling, aspects, effort estimation, debugging, faults relating to memory leakage, nano-computing, or fault tolerance, and papers about the detection or localisation of existing individual known faults. Where the same study appears in several publications, only the most comprehensive or most recent counts as includable. Respond with exactly one token: -1 to exclude, 0 if related but uncertain, or 1 to include.",
+    "Moran_2021": "You are screening a record for a systematic review on how dietary manipulation affects risk-related behaviour in animals. Read the title and abstract and decide whether the record should be included, applying this review's published eligibility criteria (SYNERGY dataset; original review DOI 10.1111/brv.12655): the study must be an original experimental study that manipulated the condition of animals in independent treatment groups through diet (dietary quantity -- partial restriction, complete deprivation, or enrichment -- or quality, e.g. protein restriction or enrichment), over short-term or longer-term (weeks to months) manipulations, followed by behavioural observations in risk-related contexts (e.g. novel environments, novel object, risk-sensitive foraging, predator response) in independent trials. Exclude studies on species with compromised genetic diversity or evolved adaptive responses (domesticated animals, laboratory breeds, genetically modified organisms), studies on humans, studies manipulating micronutrient content or high-fat diets, and studies where the dietary treatment was not independent of the behavioural assay (e.g. measured under both high/low food availability, coupled with non-dietary factors, or applied longitudinally within individuals rather than cross-sectionally). Respond with exactly one token: -1 to exclude, 0 if related but uncertain, or 1 to include.",
+    "Muthu_2021": "You are screening a record for a systematic review of randomized controlled trials on perioperative variables in spine surgery. Read the title and abstract and decide whether the record should be included, applying this review's published eligibility criteria (SYNERGY dataset; original review DOI 10.1097/BRS.0000000000003645): the study must be an RCT with a 1:1 parallel two-arm design; related to spine surgery involving preoperative, intraoperative, or postoperative variables; and have a dichotomous primary or secondary outcome. Exclude studies not involving human subjects, studies with continuous-variable outcomes (e.g. pain scores, Oswestry Disability Index scores, time to union) without predefined clinical success criteria, and studies that did not report a statistically significant primary or secondary outcome measure. Respond with exactly one token: -1 to exclude, 0 if related but uncertain, or 1 to include."
+  },
   "_notes": [
     "x = 4, four distinct vendor families: Anthropic, OpenAI, Google, Mistral.",
     "The Mistral vendor requires the attest[mistral] extra (mistralai>=1.0),",
@@ -33,14 +40,23 @@
     "served (many vendors echo this back in the response) before freezing",
     "data/run/ for epoch 1, so ensemble_config_id is reproducible.",
     "",
-    "prompt_version is currently a provenance label only: attest's vendor",
-    "registry does not yet forward a configured prompt to the raters, so",
-    "every vendor runs attest.vendors.base.DEFAULT_SCREENING_PROMPT",
-    "regardless of this value. Bump it only once the kernel actually",
-    "threads prompt text through, or it will misrepresent what ran.",
+    "track_prompts (added 2026-08-02) is what the kernel actually reads to",
+    "screen each record: attest.provenance.config.Config.prompt_for_track",
+    "resolves it by record.track, which build_goldset.py sets to the SYNERGY",
+    "review name -- so this one config.json screens all five reviews.toml",
+    "reviews in a single `attest screen` run, each against its own published",
+    "eligibility criteria, instead of the kernel's generic fallback prompt.",
+    "Criteria text is taken verbatim (lightly reflowed to prose) from each",
+    "review's eligibility_criteria field in asreview/synergy-dataset's",
+    "datasets.toml -- re-verify against that file if reviews.toml's review",
+    "list ever changes. prompt_version is bumped to 'v2' to reflect this;",
+    "it is still a provenance label only (not read by the kernel itself --",
+    "see attest.provenance.config.VendorSpec), so keep it in sync by hand",
+    "with any future change to track_prompts.",
     "",
-    "This file is not read literally beyond 'vendors', 'aggregation', and",
-    "'tau' (see attest.cli._load_ensemble_config) -- this _notes field is",
-    "ignored by the loader and safe to keep as documentation."
+    "This file is not read literally beyond 'vendors', 'aggregation', 'tau',",
+    "'default_prompt', and 'track_prompts' (see attest.cli._load_ensemble_config)",
+    "-- this _notes field is ignored by the loader and safe to keep as",
+    "documentation."
   ]
 }
