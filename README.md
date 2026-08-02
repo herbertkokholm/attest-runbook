@@ -211,9 +211,8 @@ than describing it hypothetically.
 This project's gold standard is built from the **SYNERGY** dataset:
 
 > De Bruin, J., Ma, Y., Ferdinands, G., Teijema, J., & Van de Schoot, R. (2023).
-> *SYNERGY - Open machine learning dataset on study selection in systematic reviews*
-> (Version 2.0) [Data set]. DataverseNL.
-> https://doi.org/10.34894/HE6NAQ
+> SYNERGY — Open machine learning dataset on study selection in systematic reviews.
+> DataverseNL, V1. https://doi.org/10.34894/HE6NAQ
 
 SYNERGY is released under CC0; record metadata is sourced from OpenAlex. This repo
 redistributes no SYNERGY data directly — `build_goldset.py` fetches it at build time via
