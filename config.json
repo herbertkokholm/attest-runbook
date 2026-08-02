@@ -1,0 +1,46 @@
+{
+  "vendors": {
+    "anthropic": {
+      "model": "claude-sonnet-5",
+      "model_version": "as-of-2026-08-02",
+      "prompt_version": "v1"
+    },
+    "openai": {
+      "model": "gpt-4o",
+      "model_version": "as-of-2026-08-02",
+      "prompt_version": "v1"
+    },
+    "google": {
+      "model": "gemini-2.0-flash",
+      "model_version": "as-of-2026-08-02",
+      "prompt_version": "v1"
+    },
+    "mistral": {
+      "model": "mistral-large-latest",
+      "model_version": "as-of-2026-08-02",
+      "prompt_version": "v1"
+    }
+  },
+  "aggregation": "boundary_dispersion",
+  "tau": 0.75,
+  "_notes": [
+    "x = 4, four distinct vendor families: Anthropic, OpenAI, Google, Mistral.",
+    "The Mistral vendor requires the attest[mistral] extra (mistralai>=1.0),",
+    "already included in attest[all]; needs MISTRAL_API_KEY.",
+    "",
+    "model_version values are placeholders ('as-of-2026-08-02'). Replace",
+    "each with the exact dated snapshot the vendor's API confirms it",
+    "served (many vendors echo this back in the response) before freezing",
+    "data/run/ for epoch 1, so ensemble_config_id is reproducible.",
+    "",
+    "prompt_version is currently a provenance label only: attest's vendor",
+    "registry does not yet forward a configured prompt to the raters, so",
+    "every vendor runs attest.vendors.base.DEFAULT_SCREENING_PROMPT",
+    "regardless of this value. Bump it only once the kernel actually",
+    "threads prompt text through, or it will misrepresent what ran.",
+    "",
+    "This file is not read literally beyond 'vendors', 'aggregation', and",
+    "'tau' (see attest.cli._load_ensemble_config) -- this _notes field is",
+    "ignored by the loader and safe to keep as documentation."
+  ]
+}

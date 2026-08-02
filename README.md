@@ -111,13 +111,21 @@ validated via `attest.contracts.input.validate_and_normalize` before being writt
 ## §4 Keys, environment, and the ensemble config
 
 - Install: depend on `attest[all]` (git or local path) and `synergy-dataset`.
-- Copy `.env.example` to `.env` and set the four vendors' API keys. `.env` is gitignored.
-- Use four distinct vendor families (e.g. Anthropic, OpenAI, Google, one open model via
-  its provider) so x = 4 with genuinely different families, per the method.
+- Copy `.env.example` to `.env` and set the vendors' API keys. `.env` is gitignored.
+- Four distinct vendor families, x = 4: Anthropic `claude-sonnet-5`, OpenAI `gpt-4o`,
+  Google `gemini-2.0-flash`, Mistral `mistral-large-latest`. The Mistral vendor needs the
+  `attest[mistral]` extra (`mistralai>=1.0`, already included in `attest[all]`) and
+  `MISTRAL_API_KEY`.
 - `config.json`: vendors, per-vendor model+version, per-vendor prompt version,
-  aggregation rule, `tau`, `x = 4`. Start `tau` at a small dispersion value and treat it
-  as tunable; report whatever is used. Keep the prompt identical across vendors except
-  for provider-required formatting, and version it so `ensemble_config_id` is meaningful.
+  aggregation rule (only `"boundary_dispersion"` is implemented in the kernel today;
+  `majority`/`unanimity` are recognized names but raise `NotImplementedError`), `tau`
+  (currently `0.75`, treat as tunable and report whatever is used). Validated against the
+  kernel's own loader (`attest.cli._load_ensemble_config`) — see `config.json`'s `_notes`.
+- One wiring the kernel doesn't do yet, worth knowing before relying on it: `prompt_version`
+  is currently a provenance label only. `attest.vendors.registry` never forwards a
+  configured prompt to the raters, so every vendor runs the kernel's hardcoded
+  `DEFAULT_SCREENING_PROMPT` regardless of this repo's `config.json`. Don't bump
+  `prompt_version` for a real prompt change until the kernel threads it through.
 
 ---
 
