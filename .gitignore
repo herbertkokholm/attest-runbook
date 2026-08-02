@@ -1,0 +1,22 @@
+.env
+
+# Regenerable / large data — not committed, rebuilt via build_goldset.py
+data/gold.json
+data/audit_todo.json
+data/audit_done.json
+
+# Raw vendor votes — the true reproducibility artifact, archived separately
+# (Git LFS or a tagged data release), not via normal git commits.
+data/run/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+
+# OS
+.DS_Store
