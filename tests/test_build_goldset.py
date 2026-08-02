@@ -26,6 +26,7 @@ class FakeDataset:
 @pytest.fixture(autouse=True)
 def patch_dataset(monkeypatch):
     monkeypatch.setattr(build_goldset, "Dataset", FakeDataset)
+    monkeypatch.setattr(build_goldset, "ensure_raw_dataset_downloaded", lambda: None)
 
 
 def _work(id_: str, title: str, abstract: str | None, doi: str = "") -> dict:
@@ -124,6 +125,40 @@ def test_ids_carried_when_present(tmp_path: Path):
     record = json.loads(out.read_text())["records"][0]
     kinds = {entry["kind"] for entry in record["ids"]}
     assert kinds == {"doi", "openalex"}
+
+
+def test_strip_html_removes_tags_and_preserves_word_boundaries():
+    assert build_goldset.strip_html("plain text") == "plain text"
+    assert build_goldset.strip_html("<i>DSM-5</i> PTSD") == "DSM-5 PTSD"
+    # No original whitespace around the tags: stripping must still separate words.
+    assert build_goldset.strip_html("MS<i>Estonia</i>disaster") == "MS Estonia disaster"
+    assert (
+        build_goldset.strip_html('<sub xmlns:mml="http://x">2</sub>O') == "2 O"
+    )
+
+
+def test_html_markup_stripped_from_title_and_abstract(tmp_path: Path):
+    FakeDataset._WORKS = {
+        "reviewA": [
+            (
+                _work(
+                    "https://openalex.org/W1",
+                    "MS<i>Estonia</i>disaster",
+                    "<h2>Abstract</h2> Some text.",
+                ),
+                1,
+            ),
+        ],
+    }
+    reviews_file = tmp_path / "reviews.toml"
+    reviews_file.write_text('reviews = ["reviewA"]\n')
+    out = tmp_path / "gold.json"
+
+    build_goldset.build_goldset(reviews_file, "test-project", out)
+
+    record = json.loads(out.read_text())["records"][0]
+    assert record["title"] == "MS Estonia disaster"
+    assert record["abstract"] == "Abstract Some text."
 
 
 def test_invalid_payload_raises_contract_error(tmp_path: Path):

@@ -13,13 +13,42 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 import tomllib
 from pathlib import Path
 from typing import Any
 
 from attest.contracts.input import ContractError, validate_and_normalize
-from synergy_dataset import Dataset
+from synergy_dataset import Dataset, download_raw_dataset
+from synergy_dataset.base import _dataset_available
+
+_HTML_TAG_RE = re.compile(r"<[^>]+>")
+
+
+def strip_html(text: str) -> str:
+    """Strip HTML-like markup from OpenAlex title/abstract text.
+
+    A small fraction of SYNERGY/OpenAlex records carry structural or
+    formatting tags (``<i>``, ``<sub>``, ``<h3>``, ...), sometimes with no
+    surrounding whitespace (e.g. ``"MS<i>Estonia</i>disaster"``), so each
+    tag is replaced with a single space -- rather than deleted outright --
+    to avoid gluing the adjacent words together, then runs of whitespace
+    are collapsed.
+    """
+    return re.sub(r"\s+", " ", _HTML_TAG_RE.sub(" ", text)).strip()
+
+
+def ensure_raw_dataset_downloaded() -> None:
+    """Download the raw SYNERGY archive if it isn't already cached locally.
+
+    ``Dataset.iter()`` silently yields nothing if the raw archive hasn't
+    been downloaded yet (it just globs a directory that doesn't exist), so
+    this must run before iterating any review -- mirroring what the
+    package's own CLI (``synergy_dataset get``) does automatically.
+    """
+    if not _dataset_available():
+        download_raw_dataset()
 
 
 def load_review_names(reviews_file: Path) -> list[str]:
@@ -55,6 +84,7 @@ def build_records(review_name: str) -> tuple[list[dict[str, Any]], int]:
             abstract = work["abstract"]
         except KeyError:
             abstract = None
+        abstract = strip_html(abstract) if abstract else None
         if not abstract:
             n_dropped += 1
             continue
@@ -65,7 +95,7 @@ def build_records(review_name: str) -> tuple[list[dict[str, Any]], int]:
         records.append(
             {
                 "id": record_id,
-                "title": work.get("title") or "",
+                "title": strip_html(work.get("title") or ""),
                 "abstract": abstract,
                 "track": review_name,
                 "ids": _external_ids(doi, openalex_id),
@@ -77,6 +107,7 @@ def build_records(review_name: str) -> tuple[list[dict[str, Any]], int]:
 
 def build_goldset(reviews_file: Path, project: str, out: Path) -> None:
     review_names = load_review_names(reviews_file)
+    ensure_raw_dataset_downloaded()
 
     all_records: list[dict[str, Any]] = []
     for review_name in review_names:
