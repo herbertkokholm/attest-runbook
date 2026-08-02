@@ -16,13 +16,14 @@ dependencies = [
 
 [project.scripts]
 build-goldset = "build_goldset:main"
+score-audit = "score_audit:main"
 
 [project.optional-dependencies]
 dev = ["ruff", "mypy", "pytest"]
 
 [tool.setuptools]
 package-dir = { "" = "src" }
-py-modules = ["build_goldset"]
+py-modules = ["build_goldset", "score_audit"]
 
 [tool.ruff]
 line-length = 100

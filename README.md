@@ -24,7 +24,8 @@ attest-runbook/
   reviews.toml              # the selected SYNERGY reviews (§2), the single source of truth
   config.json               # ensemble Config: vendors, models, prompts, aggregation, tau, x=4
   src/build_goldset.py      # SYNERGY -> attest input contract (§3)
-  tests/                    # tests for build_goldset.py
+  src/score_audit.py        # scores a drawn audit sample against SYNERGY gold (§5)
+  tests/                    # tests for build_goldset.py and score_audit.py
   Makefile                  # one target per pipeline stage (§5)
   results/                  # SMALL committed artifacts: validation_record*.json, ablation.json
   data/                     # gitignored: gold.json (large), run/ (frozen votes)
@@ -132,29 +133,46 @@ validated via `attest.contracts.input.validate_and_normalize` before being writt
 ## §5 Run sequence (Makefile targets; offline after `screen`)
 
 All stages operate on files via the kernel's `io/store`; only `screen` touches the
-network. Freeze `data/run/` once produced.
+network. Freeze `data/run/` once produced. Every target reads its inputs and writes its
+outputs through variables (`GOLD`, `RUN_DIR`, `CONFIG`, ...) with sensible defaults —
+override any of them on the command line; see the `Makefile`'s header comment.
 
-1. `make goldset`  -> `build-goldset ... --out data/gold.json`
-2. `make screen`   -> `attest screen --config config.json --input data/gold.json --out data/run/` (the only paid, networked step; freeze `data/run/` after)
-3. `make audit-draw` -> `attest audit-draw --run data/run/ --n <budget> --strata track --out data/audit_todo.json`
-4. Review `audit_todo.json` and produce `audit_done.json` (+1/−1 per sampled exclusion).
-   Because SYNERGY carries the true label, the draw can be scored against SYNERGY for a
-   fully reproducible audit, optionally adding an independent human pass.
-5. `make audit-apply` -> `attest audit-apply --run data/run/ --audit data/audit_done.json`
-6. `make validate` -> `attest validate --run data/run/ --gold data/gold.json --out results/validation_record.json`
-7. `make ablate`   -> `attest ablate --config config.json --gold data/gold.json --out results/ablation.json`
+1. `make goldset` -> `build-goldset --reviews-file reviews.toml --project attest-paper --out data/gold.json`
+2. `make screen` -> `attest screen --input data/gold.json --config config.json --run-dir data/run --track synergy-5-reviews`
+   (the only paid, networked step; freeze `data/run/` after). Set `DETERMINISTIC_SEED=1`
+   to smoke-test the whole pipeline with network-free, seeded raters first.
+3. `make audit-draw` -> `attest audit-draw --run-dir data/run --input data/gold.json --size 600 --stratify-by-track --seed 42 > data/audit_todo.json`
+4. `make audit-score` -> scores the drawn sample against SYNERGY's own gold labels (via
+   `score-audit`, this repo's script), writing `data/audit_done.json` — a fully
+   reproducible audit with no manual step required. To layer an independent human pass on
+   top, edit `data/audit_done.json` before the next step.
+5. `make audit-apply` -> `attest audit-apply --run-dir data/run --labels data/audit_done.json`
+6. `make validate` -> `attest validate --run-dir data/run --input data/gold.json --confidence 0.95 --out results/validation_record.json`
+7. `make ablate` -> `attest ablate --run-dir data/run --input data/gold.json --aggregation boundary_dispersion --tau 0.75 --out results/ablation.json`
+   (`ablate` reads its own `--aggregation`/`--tau`, not `config.json` — the Makefile's
+   `AGGREGATION`/`TAU` variables must be kept in sync with `config.json` by hand)
+
+`make all` runs the full chain in order. `make clean-run` removes one epoch's `data/run/`
+and audit files (never `data/gold.json` or `results/`) to redo an epoch from scratch.
 
 Audit budget sets recall precision, not the maths: to claim an exclusion error rate at
 or below 0.005 with zero observed misses, the rule of three needs on the order of 600
-audited exclusions; below 0.001, about 3000. Set `--n` accordingly, stratified by track,
-and report the budget with the floor. With x = 4, `ablate` enumerates all 11 subsets; no
+audited exclusions (the Makefile's default); below 0.001, about 3000 (`AUDIT_SIZE=3000`).
+Report the budget with the floor. With x = 4, `ablate` enumerates all 11 subsets; no
 subset sampling needed.
 
 Run at least two epochs: after the first pass, make a deliberate config change (swap a
-model version or a prompt version, which yields a new `ensemble_config_id`) and re-run
-`screen` + `validate`, writing `results/validation_record_epoch2.json`. This demonstrates
-the per-epoch, versioned-instrument reporting the paper claims rather than describing it
-hypothetically.
+model version or a prompt version, which yields a new `ensemble_config_id`) and rerun
+`screen` + `validate` — but under a **fresh `RUN_DIR`**, not the same one: a run directory
+is locked to one ensemble configuration (`attest.io.store.RunStore.write_epoch` raises if
+asked to reuse a run directory across a config change), so a second epoch needs its own
+directory, e.g.:
+```
+make all RUN_DIR=data/run_epoch2 CONFIG=config_epoch2.json \
+         VALIDATE_OUT=results/validation_record_epoch2.json
+```
+This demonstrates the per-epoch, versioned-instrument reporting the paper claims rather
+than describing it hypothetically.
 
 ---
 
