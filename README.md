@@ -195,14 +195,10 @@ than describing it hypothetically.
 
 ## §7 Pre-run checklist
 
-- [ ] `attest-runbook` private repo created; `.gitignore` excludes `.env`, `data/gold.json`, `data/run/`.
-- [ ] `reviews.toml` holds the five reviews (or a trimmed set); counts confirmed with `synergy_dataset show`.
-- [ ] `build_goldset.py` produces `data/gold.json` that validates against the input contract.
 - [ ] Four distinct vendor families configured in `.env`; `config.json` has `x = 4`, a stated `tau`, versioned prompts.
 - [ ] Audit budget chosen from the recall precision to be claimed.
 - [ ] `data/run/` frozen immediately after `screen`; downstream stages offline; `run/` archived (LFS or data release).
 - [ ] Two epochs run to exercise per-epoch reporting.
-- [ ] SYNERGY cited (De Bruin et al. 2023, DOI 10.34894/HE6NAQ) in the paper and this README.
 
 ---
 
