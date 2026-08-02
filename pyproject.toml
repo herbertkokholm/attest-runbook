@@ -11,13 +11,17 @@ license = { text = "MIT" }
 requires-python = ">=3.11"
 dependencies = [
     "attest[all] @ git+https://github.com/herbertkokholm/attest.git",
-    "synergy-dataset>=2.2",
+    "synergy-dataset>=1.2",
 ]
+
+[project.scripts]
+build-goldset = "build_goldset:main"
 
 [project.optional-dependencies]
 dev = ["ruff", "mypy", "pytest"]
 
 [tool.setuptools]
+package-dir = { "" = "src" }
 py-modules = ["build_goldset"]
 
 [tool.ruff]

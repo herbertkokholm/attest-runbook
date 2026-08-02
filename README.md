@@ -23,7 +23,8 @@ attest-runbook/
   .env.example              # names of the four vendor key vars, no values
   reviews.toml              # the selected SYNERGY reviews (§2), the single source of truth
   config.json               # ensemble Config: vendors, models, prompts, aggregation, tau, x=4
-  build_goldset.py          # SYNERGY -> attest input contract (§3)
+  src/build_goldset.py      # SYNERGY -> attest input contract (§3)
+  tests/                    # tests for build_goldset.py
   Makefile                  # one target per pipeline stage (§5)
   results/                  # SMALL committed artifacts: validation_record*.json, ablation.json
   data/                     # gitignored: gold.json (large), run/ (frozen votes)
