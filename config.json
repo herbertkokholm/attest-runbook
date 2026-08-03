@@ -22,7 +22,7 @@
     }
   },
   "aggregation": "boundary_dispersion",
-  "tau": 0.5,
+  "tau": 0.5386751345948129,
   "zero_policy": "escalate",
   "track_prompts": {
     "van_de_Schoot_2018": "You are screening a record for a systematic review on longitudinal trajectories of post-traumatic stress symptoms. Read the title and abstract and decide whether the record should be included, applying this review's published eligibility criteria (SYNERGY dataset; original review DOI 10.1080/00273171.2017.1412293): the study must be a longitudinal study with at least three measurement waves measuring PTSD; PTSD must be measured on a continuous scale via an interview or questionnaire; the study must use a clustering method (LGMM, LCGA, or hierarchical cluster analysis); and the traumatic stress symptoms must follow events that fulfill DSM-IV criterion A1 for PTSD or acute stress disorder.",
@@ -136,6 +136,11 @@
     "swept subset sizes x' < 4 -- xsweep attaches each subset's own",
     "describe_tau() to the ablation report and warns once per sweep about",
     "this, which is expected and does not need a config change.",
+    "",
+    "tau (updated 2026-08-03) is set via",
+    "attest.ensemble.tau.resolve_tau(\"escalate_ties\", x=4), the canonical",
+    "midpoint of the escalate-ties regime at x=4 -- must be recomputed if x",
+    "changes, since tau is not comparable across ensemble sizes.",
     "",
     "This file is not read literally beyond 'vendors', 'aggregation', 'tau',",
     "'zero_policy', 'default_prompt', and 'track_prompts' (see",
