@@ -120,17 +120,33 @@ validated via `attest.contracts.input.validate_and_normalize` before being writt
 - `config.json`: vendors, per-vendor model+version, per-vendor prompt version,
   aggregation rule (only `"boundary_dispersion"` is implemented in the kernel today;
   `majority`/`unanimity` are recognized names but raise `NotImplementedError`), `tau`
-  (currently `0.75`, treat as tunable and report whatever is used), and `track_prompts`.
-  Validated against the kernel's own loader (`attest.cli._load_ensemble_config`) — see
-  `config.json`'s `_notes`.
+  (currently `0.5`, treat as tunable and report whatever is used), `zero_policy`, and
+  `track_prompts`. Validated against the kernel's own loader
+  (`attest.cli._load_ensemble_config`) — see `config.json`'s `_notes`.
 - Each vendor is screened with this review's own published eligibility criteria, not a
   generic prompt: `config.json`'s `track_prompts` maps each `reviews.toml` review name to
   its criteria text (verbatim from SYNERGY's `datasets.toml`, reflowed to prose), and the
   kernel's `Config.prompt_for_track` resolves the right one per record from `record.track`
   (which `build_goldset.py` sets to the review name) — so one `attest screen` run correctly
-  screens all five reviews at once. `prompt_version` is still a provenance label only
+  screens all five reviews at once. **The kernel, not this file, owns the output-format
+  instruction**: `attest.vendors.base.compose_system_prompt` appends its own
+  `OUTPUT_CONTRACT` ("Respond with exactly one token: -1/0/1...") to whatever criteria
+  text a track supplies, on every rater path, and warns if the supplied criteria already
+  contains a copy of it. So each `track_prompts` entry must carry only the review's
+  eligibility criteria — never a trailing "Respond with exactly one token..." sentence of
+  its own, or the composed prompt ships that instruction twice and trips the kernel's
+  warning on every screen run. `prompt_version` is still a provenance label only
   (`attest.provenance.config.VendorSpec` doesn't read it back), so keep it bumped by hand
   whenever `track_prompts` changes, or it will misrepresent what ran.
+- `zero_policy` (`config.json`, default `"escalate"`) governs the one case the
+  boundary+dispersion rule can't resolve by sign alone: a non-boundary vote vector whose
+  mean lands exactly on `0` (e.g. all four vendors vote `0`). `Decision.auto_label` can
+  never be `0` — under `"escalate"` (the recall-safe default, used here) it routes to
+  human adjudication like any other escalation; the only other option is `"include"`
+  (folds it into `+1`). There is deliberately no `"exclude"` option, since that's the one
+  disposition that would silently destroy recall. This repo's `src/score_audit.py` only
+  maps drawn record ids to SYNERGY gold labels for `audit-apply` and never itself branches
+  on a predicted/auto label, so it needed no change for this.
 
 ---
 
@@ -144,7 +160,11 @@ override any of them on the command line; see the `Makefile`'s header comment.
 1. `make goldset` -> `build-goldset --reviews-file reviews.toml --project attest-paper --out data/gold.json`
 2. `make screen` -> `attest screen --input data/gold.json --config config.json --run-dir data/run --track synergy-5-reviews`
    (the only paid, networked step; freeze `data/run/` after). Set `DETERMINISTIC_SEED=1`
-   to smoke-test the whole pipeline with network-free, seeded raters first.
+   to smoke-test the whole pipeline with network-free, seeded raters first. This also
+   runs `attest.ensemble.tau.validate_tau` against `config.json`'s `tau` and `x`,
+   writes the proof to `data/run/tau_report.json`, and warns (not fails) on a
+   suspicious tau (inert, or sitting exactly on an attainable dispersion value) — check
+   for warnings after the first `screen` of an epoch.
 3. `make audit-draw` -> `attest audit-draw --run-dir data/run --input data/gold.json --size 600 --stratify-by-track --seed 42 > data/audit_todo.json`
 4. `make audit-score` -> scores the drawn sample against SYNERGY's own gold labels (via
    `score-audit`, this repo's script), writing `data/audit_done.json` — a fully
@@ -152,9 +172,13 @@ override any of them on the command line; see the `Makefile`'s header comment.
    top, edit `data/audit_done.json` before the next step.
 5. `make audit-apply` -> `attest audit-apply --run-dir data/run --labels data/audit_done.json`
 6. `make validate` -> `attest validate --run-dir data/run --input data/gold.json --confidence 0.95 --out results/validation_record.json`
-7. `make ablate` -> `attest ablate --run-dir data/run --input data/gold.json --aggregation boundary_dispersion --tau 0.75 --out results/ablation.json`
-   (`ablate` reads its own `--aggregation`/`--tau`, not `config.json` — the Makefile's
-   `AGGREGATION`/`TAU` variables must be kept in sync with `config.json` by hand)
+7. `make ablate` -> `attest ablate --run-dir data/run --input data/gold.json --aggregation boundary_dispersion --tau 0.5 --zero-policy escalate --out results/ablation.json`
+   (`ablate` reads its own `--aggregation`/`--tau`/`--zero-policy`, not `config.json` —
+   the Makefile's `AGGREGATION`/`TAU`/`ZERO_POLICY` variables must be kept in sync with
+   `config.json` by hand). Because the set of attainable dispersion values depends on
+   ensemble size, one fixed `tau` is not comparable in strength across the swept subset
+   sizes x' < 4; each subset's own `tau_report` is attached to `ablation.json` and the
+   kernel warns once per sweep about this — expected, not a config error.
 
 `make all` runs the full chain in order. `make clean-run` removes one epoch's `data/run/`
 and audit files (never `data/gold.json` or `results/`) to redo an epoch from scratch.
@@ -194,14 +218,17 @@ than describing it hypothetically.
 | `ablation.json` leave-one-out | Marginal vendor contribution / best subset at each x |
 | `config.json` + `ensemble_config_id` + change log | Reproducibility package + TRIPOD-LLM crosswalk |
 | both epochs' validation records | Per-epoch versioned-instrument demonstration |
+| `validation_record.json`'s `tau_report` (from `data/run/tau_report.json`) | Self-documenting proof that `tau` behaves as claimed at this `x` |
+| `config.json`'s `zero_policy` | States how a would-be `auto_label == 0` tie is resolved; never silently dropped into the confusion matrix |
 
 ---
 
 ## §7 Pre-run checklist
 
-- [ ] Four distinct vendor families configured in `.env`; `config.json` has `x = 4`, a stated `tau`, versioned prompts, and a `track_prompts` entry for every review in `reviews.toml`.
+- [ ] Four distinct vendor families configured in `.env`; `config.json` has `x = 4`, a stated `tau`, a stated `zero_policy`, versioned prompts, and a `track_prompts` entry for every review in `reviews.toml`.
+- [ ] Every `track_prompts` entry carries only eligibility criteria — no trailing "Respond with exactly one token..." sentence; the kernel appends the output contract itself.
 - [ ] Audit budget chosen from the recall precision to be claimed.
-- [ ] `data/run/` frozen immediately after `screen`; downstream stages offline; `run/` archived (LFS or data release).
+- [ ] `data/run/` frozen immediately after `screen`; downstream stages offline; `run/` archived (LFS or data release). Check `screen`'s output / `tau_report.json` for tau warnings first.
 - [ ] Two epochs run to exercise per-epoch reporting.
 
 ---

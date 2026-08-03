@@ -27,10 +27,12 @@ AUDIT_DONE   ?= data/audit_done.json
 CONFIDENCE   ?= 0.95
 VALIDATE_OUT ?= $(RESULTS_DIR)/validation_record.json
 
-# ablate reads its own --aggregation/--tau; it does not read config.json.
-# Keep these in sync with config.json's "aggregation"/"tau" by hand.
+# ablate reads its own --aggregation/--tau/--zero-policy; it does not read
+# config.json. Keep these in sync with config.json's "aggregation"/"tau"/
+# "zero_policy" by hand.
 AGGREGATION  ?= boundary_dispersion
-TAU          ?= 0.75
+TAU          ?= 0.5
+ZERO_POLICY  ?= escalate
 ABLATE_OUT   ?= $(RESULTS_DIR)/ablation.json
 
 .PHONY: help dirs goldset screen audit-draw audit-score audit-apply validate ablate all clean-run
@@ -77,7 +79,7 @@ validate: dirs
 ##    restricted to gold-labeled records.
 ablate: dirs
 	attest ablate --run-dir $(RUN_DIR) --input $(GOLD) --aggregation $(AGGREGATION) \
-		--tau $(TAU) --out $(ABLATE_OUT)
+		--tau $(TAU) --zero-policy $(ZERO_POLICY) --out $(ABLATE_OUT)
 
 ## Full reproducible pipeline for one epoch, in order. For a second epoch,
 ## change config.json (a new model/prompt version) and rerun with a fresh
