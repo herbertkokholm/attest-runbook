@@ -161,6 +161,44 @@ def test_html_markup_stripped_from_title_and_abstract(tmp_path: Path):
     assert record["abstract"] == "Abstract Some text."
 
 
+def test_dropped_report_written_with_included_excluded_breakdown(tmp_path: Path):
+    # Asymmetric counts (2 vs 1) so a swapped included/excluded assignment
+    # in build_goldset's report assembly would fail this test.
+    FakeDataset._WORKS = {
+        "reviewA": [
+            (_work("https://openalex.org/W1", "Has abstract", "Abstract 1"), 1),
+            (_work("https://openalex.org/W2", "Dropped include 1", ""), 1),
+            (_work("https://openalex.org/W3", "Dropped include 2", None), 1),
+            (_work("https://openalex.org/W4", "Dropped exclude", ""), 0),
+        ],
+    }
+    reviews_file = tmp_path / "reviews.toml"
+    reviews_file.write_text('reviews = ["reviewA"]\n')
+    out = tmp_path / "gold.json"
+
+    build_goldset.build_goldset(reviews_file, "test-project", out)
+
+    report = json.loads((tmp_path / "gold.dropped.json").read_text())
+    assert report["project"] == "test-project"
+    assert report["by_track"]["reviewA"] == {"dropped_included": 2, "dropped_excluded": 1}
+    assert report["total_dropped_included"] == 2
+
+
+def test_build_records_returns_label_keyed_drop_counter():
+    FakeDataset._WORKS = {
+        "reviewA": [
+            (_work("https://openalex.org/W1", "T", "A"), 1),
+            (_work("https://openalex.org/W2", "No abs include", ""), 1),
+            (_work("https://openalex.org/W3", "No abs exclude", ""), 0),
+            (_work("https://openalex.org/W4", "No abs exclude 2", None), 0),
+        ],
+    }
+    records, dropped = build_goldset.build_records("reviewA")
+    assert len(records) == 1
+    assert dropped[1] == 1
+    assert dropped[-1] == 2
+
+
 def test_invalid_payload_raises_contract_error(tmp_path: Path):
     # A blank record id (no OpenAlex id, no DOI) must fail loudly, not silently.
     FakeDataset._WORKS = {

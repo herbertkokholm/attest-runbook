@@ -16,6 +16,7 @@ import json
 import re
 import sys
 import tomllib
+from collections import Counter
 from pathlib import Path
 from typing import Any
 
@@ -70,23 +71,24 @@ def _external_ids(doi: str, openalex_id: str) -> list[dict[str, str]]:
     return ids
 
 
-def build_records(review_name: str) -> tuple[list[dict[str, Any]], int]:
+def build_records(review_name: str) -> tuple[list[dict[str, Any]], Counter[int]]:
     """Map one SYNERGY review's works to input-contract records.
 
     Returns:
-        The mapped records, and the count of records dropped for having an
-        empty or missing abstract.
+        The mapped records, and a Counter of records dropped for having an
+        empty or missing abstract, keyed by gold_label (1 or -1).
     """
     records: list[dict[str, Any]] = []
-    n_dropped = 0
+    dropped: Counter[int] = Counter()
     for work, label_included in Dataset(review_name).iter():
+        gold_label = 1 if label_included == 1 else -1
         try:
             abstract = work["abstract"]
         except KeyError:
             abstract = None
         abstract = strip_html(abstract) if abstract else None
         if not abstract:
-            n_dropped += 1
+            dropped[gold_label] += 1
             continue
 
         openalex_id = work.get("id") or ""
@@ -99,10 +101,10 @@ def build_records(review_name: str) -> tuple[list[dict[str, Any]], int]:
                 "abstract": abstract,
                 "track": review_name,
                 "ids": _external_ids(doi, openalex_id),
-                "gold_label": 1 if label_included == 1 else -1,
+                "gold_label": gold_label,
             }
         )
-    return records, n_dropped
+    return records, dropped
 
 
 def build_goldset(reviews_file: Path, project: str, out: Path) -> None:
@@ -110,9 +112,16 @@ def build_goldset(reviews_file: Path, project: str, out: Path) -> None:
     ensure_raw_dataset_downloaded()
 
     all_records: list[dict[str, Any]] = []
+    drop_report: dict[str, dict[str, int]] = {}
     for review_name in review_names:
-        records, n_dropped = build_records(review_name)
-        print(f"{review_name}: {len(records)} kept, {n_dropped} dropped (empty abstract)")
+        records, dropped = build_records(review_name)
+        di, de = dropped[1], dropped[-1]
+        flag = "  <-- DROPS INCLUDES" if di else ""
+        print(
+            f"{review_name}: {len(records)} kept, "
+            f"{di} include(s) + {de} exclude(s) dropped (empty abstract){flag}"
+        )
+        drop_report[review_name] = {"dropped_included": di, "dropped_excluded": de}
         all_records.extend(records)
 
     payload = {
@@ -124,9 +133,30 @@ def build_goldset(reviews_file: Path, project: str, out: Path) -> None:
     normalized = validate_and_normalize(payload)
     print(f"validated: {len(normalized.records)} records across {len(review_names)} review(s)")
 
+    total_dropped_included = sum(t["dropped_included"] for t in drop_report.values())
+    if total_dropped_included:
+        print(
+            f"WARNING: {total_dropped_included} relevant record(s) dropped for empty "
+            "abstract are absent from the recall denominator -- see drop report"
+        )
+
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(payload, indent=2))
     print(f"wrote {out}")
+
+    report_path = out.with_name(f"{out.stem}.dropped.json")
+    report_path.write_text(
+        json.dumps(
+            {
+                "project": project,
+                "by_track": drop_report,
+                "total_dropped_included": total_dropped_included,
+            },
+            indent=2,
+            sort_keys=True,
+        )
+    )
+    print(f"wrote {report_path}")
 
 
 def main(argv: list[str] | None = None) -> int:
