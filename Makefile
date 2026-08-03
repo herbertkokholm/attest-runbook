@@ -5,7 +5,7 @@
 #
 # Override any variable on the command line, e.g.:
 #   make screen RUN_DIR=data/run_epoch2 CONFIG=config_epoch2.json
-#   make audit-draw AUDIT_SIZE=3000   # tighter recall-floor claim
+#   make audit-draw AUDIT_SIZE=3000   # a specific sample size instead
 
 PROJECT      ?= attest-paper
 REVIEWS_FILE ?= reviews.toml
@@ -19,7 +19,11 @@ TRACK        ?= synergy-5-reviews
 # pipeline before spending on real vendor calls. Empty (default) = live.
 DETERMINISTIC_SEED ?=
 
-AUDIT_SIZE   ?= 600
+# "all" audits the entire screen-excluded population instead of a sample --
+# gold labels are free (SYNERGY is already published), so the recall floor
+# is exact rather than merely a floor. Override with a number for a smaller
+# sample when auditing against real, non-free human labels.
+AUDIT_SIZE   ?= all
 AUDIT_SEED   ?= 42
 AUDIT_TODO   ?= data/audit_todo.json
 AUDIT_DONE   ?= data/audit_done.json
@@ -31,7 +35,7 @@ VALIDATE_OUT ?= $(RESULTS_DIR)/validation_record.json
 # config.json. Keep these in sync with config.json's "aggregation"/"tau"/
 # "zero_policy" by hand.
 AGGREGATION  ?= boundary_dispersion
-TAU          ?= 0.5
+TAU          ?= 0.5386751345948129
 ZERO_POLICY  ?= escalate
 ABLATE_OUT   ?= $(RESULTS_DIR)/ablation.json
 
