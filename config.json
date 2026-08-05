@@ -3,26 +3,31 @@
     "anthropic": {
       "model": "claude-sonnet-5",
       "model_version": "TODO:capture-served-snapshot-before-freeze",
-      "prompt_version": "v3"
+      "prompt_version": "v3",
+      "temperature": 0.0
     },
     "openai": {
       "model": "TODO:pin-openai-current-gen-dated-snapshot",
       "model_version": "TODO:capture-served-snapshot-before-freeze",
-      "prompt_version": "v3"
+      "prompt_version": "v3",
+      "temperature": 0.0
     },
     "google": {
       "model": "TODO:pin-google-current-gen-dated-snapshot",
       "model_version": "TODO:capture-served-snapshot-before-freeze",
-      "prompt_version": "v3"
+      "prompt_version": "v3",
+      "temperature": 0.0
     },
     "mistral": {
       "model": "mistral-large-2512",
       "model_version": "TODO:capture-served-snapshot-before-freeze",
-      "prompt_version": "v3"
+      "prompt_version": "v3",
+      "temperature": 0.0
     }
   },
   "aggregation": "boundary_dispersion",
   "tau": 0.5386751345948129,
+  "confidence_threshold": 0.5,
   "zero_policy": "escalate",
   "track_prompts": {
     "van_de_Schoot_2018": "You are screening a record for a systematic review on longitudinal trajectories of post-traumatic stress symptoms. Read the title and abstract and decide whether the record should be included, applying this review's published eligibility criteria (SYNERGY dataset; original review DOI 10.1080/00273171.2017.1412293): the study must be a longitudinal study with at least three measurement waves measuring PTSD; PTSD must be measured on a continuous scale via an interview or questionnaire; the study must use a clustering method (LGMM, LCGA, or hierarchical cluster analysis); and the traumatic stress symptoms must follow events that fulfill DSM-IV criterion A1 for PTSD or acute stress disorder.",
@@ -142,8 +147,45 @@
     "midpoint of the escalate-ties regime at x=4 -- must be recomputed if x",
     "changes, since tau is not comparable across ensemble sizes.",
     "",
-    "This file is not read literally beyond 'vendors', 'aggregation', 'tau',",
-    "'zero_policy', 'default_prompt', and 'track_prompts' (see",
+    "temperature (added 2026-08-05, required as of kernel commit ab9cdef):",
+    "attest.provenance.config.VendorSpec gained a required 'temperature'",
+    "field with no default -- _load_ensemble_config reads spec['temperature']",
+    "directly, so a vendor entry missing it now raises KeyError at load time",
+    "instead of silently doing nothing. Set to 0.0 (deterministic sampling)",
+    "on all four vendors here, matching the kernel's own data/example_config.json",
+    "convention for a screening task where reproducibility matters more than",
+    "response diversity. Unlike model_version/prompt_version, temperature is",
+    "now actually sent as the live sampling parameter (previously unversioned",
+    "and unset, i.e. each vendor's own API default) -- this is a first-time",
+    "behavior pin, not just a provenance label. It is hash-sensitive: adding",
+    "it here changes ensemble_config_id and opens a new epoch, same as any",
+    "model_version/prompt_version change would.",
+    "",
+    "Same kernel commit (ab9cdef) also started enforcing model_version",
+    "against what each vendor's own response reports, raising",
+    "ModelVersionDriftError on mismatch (skipped only for Google, whose",
+    "response doesn't expose it). The four 'TODO:capture-served-snapshot-",
+    "before-freeze' placeholders above are therefore no longer just",
+    "documentation debt -- anthropic/openai/mistral will hard-fail on the",
+    "very first live call until each is replaced with the exact snapshot",
+    "string that vendor's API actually reports. Resolve before the next",
+    "live run.",
+    "",
+    "confidence_threshold (added 2026-08-05, optional, default 0.5): set",
+    "explicitly here purely for clarity -- attest.cli._load_ensemble_config",
+    "already falls back to attest.ensemble.confidence.DEFAULT_LOW_THRESHOLD",
+    "(also 0.5) when this key is absent, so this is a no-op behaviorally,",
+    "not a fix. It's the default 'low_threshold' a confidence-stratified",
+    "audit-draw uses when its own --confidence-threshold flag isn't passed.",
+    "Unlike temperature, this is deliberately excluded from to_dict()/",
+    "ensemble_config_id (attest.provenance.config.Config docstring) -- it",
+    "changes only how an already-fixed excluded population is stratified",
+    "for audit, never what a vendor samples or the ensemble's aggregate",
+    "decision, so setting or changing it does not open a new epoch.",
+    "",
+    "This file is not read literally beyond 'vendors' (including each",
+    "vendor's 'temperature'), 'aggregation', 'tau', 'zero_policy',",
+    "'default_prompt', 'track_prompts', and 'confidence_threshold' (see",
     "attest.cli._load_ensemble_config) -- this _notes field is ignored by",
     "the loader and safe to keep as documentation."
   ]
