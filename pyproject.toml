@@ -32,5 +32,15 @@ target-version = "py311"
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
 
+[tool.mypy]
+python_version = "3.11"
+mypy_path = "src"
+
+[[tool.mypy.overrides]]
+# attest does not ship a py.typed marker, so mypy can't see its type hints
+# from a downstream consumer; synergy_dataset ships no stubs either.
+module = ["attest.*", "synergy_dataset.*"]
+ignore_missing_imports = true
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]

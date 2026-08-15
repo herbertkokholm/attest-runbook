@@ -132,9 +132,7 @@ def test_strip_html_removes_tags_and_preserves_word_boundaries():
     assert build_goldset.strip_html("<i>DSM-5</i> PTSD") == "DSM-5 PTSD"
     # No original whitespace around the tags: stripping must still separate words.
     assert build_goldset.strip_html("MS<i>Estonia</i>disaster") == "MS Estonia disaster"
-    assert (
-        build_goldset.strip_html('<sub xmlns:mml="http://x">2</sub>O') == "2 O"
-    )
+    assert build_goldset.strip_html('<sub xmlns:mml="http://x">2</sub>O') == "2 O"
 
 
 def test_html_markup_stripped_from_title_and_abstract(tmp_path: Path):

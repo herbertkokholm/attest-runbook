@@ -22,9 +22,7 @@ def load_drawn_ids(todo_file: Path) -> list[str]:
     payload = json.loads(todo_file.read_text())
     drawn = payload.get("drawn")
     if not isinstance(drawn, list):
-        raise ValueError(
-            f"{todo_file}: expected a 'drawn' list, as printed by 'attest audit-draw'"
-        )
+        raise ValueError(f"{todo_file}: expected a 'drawn' list, as printed by 'attest audit-draw'")
     return [str(row["record_id"]) for row in drawn]
 
 
