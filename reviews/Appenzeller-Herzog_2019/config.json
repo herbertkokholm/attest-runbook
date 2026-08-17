@@ -1,0 +1,60 @@
+{
+  "vendors": {
+    "anthropic": {
+      "model": "claude-sonnet-5",
+      "model_version": "TODO:capture-served-snapshot-before-freeze",
+      "prompt_version": "v3",
+      "temperature": 0.0
+    },
+    "openai": {
+      "model": "TODO:pin-openai-current-gen-dated-snapshot",
+      "model_version": "TODO:capture-served-snapshot-before-freeze",
+      "prompt_version": "v3",
+      "temperature": 0.0
+    },
+    "google": {
+      "model": "TODO:pin-google-current-gen-dated-snapshot",
+      "model_version": "TODO:capture-served-snapshot-before-freeze",
+      "prompt_version": "v3",
+      "temperature": 0.0
+    },
+    "mistral": {
+      "model": "mistral-large-2512",
+      "model_version": "TODO:capture-served-snapshot-before-freeze",
+      "prompt_version": "v3",
+      "temperature": 0.0
+    }
+  },
+  "aggregation": "boundary_dispersion",
+  "tau": 0.5386751345948129,
+  "confidence_threshold": 0.5,
+  "zero_policy": "escalate",
+  "default_prompt": "You are screening a record for a systematic review on drug treatments for Wilson's disease. Read the title and abstract and decide whether the record should be included, applying this review's published eligibility criteria (SYNERGY dataset; original review DOI 10.1111/liv.14179): patients with Wilson's disease (WD) of any age or stage; the study drug must be one of four established therapies (D-penicillamine, trientine, TTM, or zinc); the control/comparator must not include the study drug itself (e.g. placebo, no treatment, or a different one of the four therapies), with matched doses across arms; concomitant therapies must be identical across the compared arms; comparisons between a monotherapy and a combination regimen that includes that same monotherapy drug (e.g. D-penicillamine plus zinc vs. zinc alone) are excluded, not merely out of scope; the study must report at least one of all-cause mortality, orthotopic liver transplantation, neurological symptoms, liver-related symptoms, adverse effects, or frequency of treatment discontinuation; and the study must be a prospective or retrospective study, including randomized, non-randomized controlled trials or comparative observational studies, in English, German, Dutch, French, Spanish, or Portuguese. Exclude animal studies, case reports, case series, cross-sectional studies, before-after studies, reviews, letters, abstract-only publications, editorials, diagnostic or other testing studies, and non-controlled studies.",
+  "_notes": [
+    "One of 3 per-review config files (runbook §2, §6) -- vendors/aggregation/tau/",
+    "zero_policy/confidence_threshold are identical across all three by design",
+    "(the same fixed instrument, screening a different review each run); only",
+    "default_prompt differs. See ../van_de_Schoot_2018/config.json's _notes for the",
+    "full history/rationale behind every other field (tau derivation, model",
+    "pinning, temperature, zero_policy, the track_prompts -> default_prompt",
+    "migration) -- not duplicated here to avoid three copies going stale",
+    "independently.",
+    "",
+    "default_prompt verified against source (2026-08-17): fetched",
+    "asreview/synergy-dataset's actual datasets.toml from GitHub and diffed",
+    "this text against the live 'eligibility_criteria' field for",
+    "Appenzeller-Herzog_2019 word for word. An earlier paraphrase (briefly",
+    "stashed in ../van_de_Schoot_2018/config.json's _notes before this file",
+    "existed) had dropped two substantive exclusion nuances, both restored",
+    "here: the control arm must not include the study drug itself, and a",
+    "monotherapy-vs-combination comparison sharing the same drug is",
+    "excluded outright, not just out of scope. Re-verify again if it's been",
+    "a while -- datasets.toml could itself be revised upstream.",
+    "",
+    "This file is not read literally beyond 'vendors' (including each",
+    "vendor's 'temperature'), 'aggregation', 'tau', 'zero_policy',",
+    "'default_prompt', 'track_prompts' (unused here), and",
+    "'confidence_threshold' (see attest.cli._load_ensemble_config) -- this",
+    "_notes field is ignored by the loader and safe to keep as documentation."
+  ]
+}

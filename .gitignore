@@ -5,6 +5,13 @@ data/gold.json
 data/audit_todo.json
 data/audit_done.json
 
+# Rebuilt via build-sentinelset (runbook §6) at the start of each real run;
+# disposable until then. Freeze deliberately ONLY when opening a second epoch:
+# `git add -f data/sentinel_set.json` the exact file epoch 1's sentinel-init
+# already used, so both epochs compare against the identical probe. If a
+# project only ever runs one epoch, this never needs to be committed at all.
+data/sentinel_set.json
+
 # Raw vendor votes — the true reproducibility artifact, archived separately
 # (Git LFS or a tagged data release), not via normal git commits.
 data/run/

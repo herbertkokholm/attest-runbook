@@ -1,0 +1,56 @@
+{
+  "vendors": {
+    "anthropic": {
+      "model": "claude-sonnet-5",
+      "model_version": "TODO:capture-served-snapshot-before-freeze",
+      "prompt_version": "v3",
+      "temperature": 0.0
+    },
+    "openai": {
+      "model": "TODO:pin-openai-current-gen-dated-snapshot",
+      "model_version": "TODO:capture-served-snapshot-before-freeze",
+      "prompt_version": "v3",
+      "temperature": 0.0
+    },
+    "google": {
+      "model": "TODO:pin-google-current-gen-dated-snapshot",
+      "model_version": "TODO:capture-served-snapshot-before-freeze",
+      "prompt_version": "v3",
+      "temperature": 0.0
+    },
+    "mistral": {
+      "model": "mistral-large-2512",
+      "model_version": "TODO:capture-served-snapshot-before-freeze",
+      "prompt_version": "v3",
+      "temperature": 0.0
+    }
+  },
+  "aggregation": "boundary_dispersion",
+  "tau": 0.5386751345948129,
+  "confidence_threshold": 0.5,
+  "zero_policy": "escalate",
+  "default_prompt": "You are screening a record for a systematic review of randomized controlled trials on perioperative variables in spine surgery. Read the title and abstract and decide whether the record should be included, applying this review's published eligibility criteria (SYNERGY dataset; original review DOI 10.1097/BRS.0000000000003645): the study must be an RCT with a 1:1 parallel two-arm design; related to spine surgery involving preoperative, intraoperative, or postoperative variables; and have a dichotomous primary or secondary outcome. Exclude studies not involving human subjects, studies with continuous-variable outcomes (e.g. pain scores, Oswestry Disability Index scores, time to union) without predefined clinical success criteria, and studies that did not report a statistically significant primary or secondary outcome measure.",
+  "_notes": [
+    "One of 3 per-review config files (runbook §2, §6) -- vendors/aggregation/tau/",
+    "zero_policy/confidence_threshold are identical across all three by design",
+    "(the same fixed instrument, screening a different review each run); only",
+    "default_prompt differs. See ../van_de_Schoot_2018/config.json's _notes for the",
+    "full history/rationale behind every other field (tau derivation, model",
+    "pinning, temperature, zero_policy, the track_prompts -> default_prompt",
+    "migration) -- not duplicated here to avoid three copies going stale",
+    "independently.",
+    "",
+    "default_prompt verified against source (2026-08-17): fetched",
+    "asreview/synergy-dataset's actual datasets.toml from GitHub and diffed",
+    "this text against the live 'eligibility_criteria' field for Muthu_2021",
+    "word for word -- checked out accurate as originally written, no",
+    "correction needed. Re-verify again if it's been a while -- datasets.toml",
+    "could itself be revised upstream.",
+    "",
+    "This file is not read literally beyond 'vendors' (including each",
+    "vendor's 'temperature'), 'aggregation', 'tau', 'zero_policy',",
+    "'default_prompt', 'track_prompts' (unused here), and",
+    "'confidence_threshold' (see attest.cli._load_ensemble_config) -- this",
+    "_notes field is ignored by the loader and safe to keep as documentation."
+  ]
+}

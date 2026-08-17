@@ -1,0 +1,70 @@
+{
+  "vendors": {
+    "anthropic": {
+      "model": "claude-sonnet-5",
+      "model_version": "TODO:capture-served-snapshot-before-freeze",
+      "prompt_version": "v3",
+      "temperature": 0.0
+    },
+    "openai": {
+      "model": "TODO:pin-openai-current-gen-dated-snapshot",
+      "model_version": "TODO:capture-served-snapshot-before-freeze",
+      "prompt_version": "v3",
+      "temperature": 0.0
+    },
+    "google": {
+      "model": "TODO:pin-google-current-gen-dated-snapshot",
+      "model_version": "TODO:capture-served-snapshot-before-freeze",
+      "prompt_version": "v3",
+      "temperature": 0.0
+    },
+    "mistral": {
+      "model": "mistral-large-2512",
+      "model_version": "TODO:capture-served-snapshot-before-freeze",
+      "prompt_version": "v3",
+      "temperature": 0.0
+    }
+  },
+  "aggregation": "boundary_dispersion",
+  "tau": 0.5386751345948129,
+  "confidence_threshold": 0.5,
+  "zero_policy": "escalate",
+  "default_prompt": "TODO: replace with the target review's own published eligibility criteria, reflowed to prose as an instruction ('You are screening a record for a systematic review on <topic>. Read the title and abstract and decide whether the record should be included, applying this review's published eligibility criteria (SYNERGY dataset; original review DOI <doi>): <criteria>.'). Do not add a 'respond with one token' instruction of your own -- the kernel appends that itself and warns if it finds a duplicate. Never run `attest screen` against this literal placeholder text.",
+  "_notes": [
+    "TEMPLATE, not a runnable config -- copy this file, don't edit it in place, when",
+    "adding a new review beyond the 3 already vetted (reviews/van_de_Schoot_2018/,",
+    "reviews/Appenzeller-Herzog_2019/, reviews/Muthu_2021/; see runbook §2, §6).",
+    "",
+    "To add review '<name>':",
+    "1. mkdir reviews/<name> && cp example_config.json reviews/<name>/config.json",
+    "2. Look up '<name>' in asreview/synergy-dataset's datasets.toml (GitHub repo root)",
+    "   -- its 'eligibility_criteria' field under [datasets.publication] for that key --",
+    "   and reflow it into default_prompt as shown above. Verify word for word against",
+    "   the live file; don't paraphrase from memory or assume an earlier summary was",
+    "   complete (reviews/Appenzeller-Herzog_2019/config.json's _notes has a worked",
+    "   example of a paraphrase that silently dropped two real exclusion criteria on a",
+    "   first pass).",
+    "3. Write reviews/<name>/reviews.toml (see reviews/Muthu_2021/reviews.toml for the",
+    "   minimal one-review shape): `reviews = [\"<name>\"]`.",
+    "4. Confirm the review's record/inclusion counts with `synergy_dataset show <name>`",
+    "   before a real run -- don't assume numbers from memory or another review's table.",
+    "5. Run with the new subfolder, e.g.:",
+    "   make all REVIEWS_FILE=reviews/<name>/reviews.toml CONFIG=reviews/<name>/config.json \\",
+    "            RUN_DIR=data/run_<name> TRACK=<name> \\",
+    "            VALIDATE_OUT=results/validation_record_<name>.json",
+    "",
+    "Every field except default_prompt is identical across all per-review config files by",
+    "design -- the same fixed instrument (vendors, aggregation, tau, zero_policy) is what's",
+    "being proven reliable across reviews, so it must not vary between them. See",
+    "reviews/van_de_Schoot_2018/config.json's _notes for the full history/rationale",
+    "behind every other field (tau derivation, model pinning, temperature, zero_policy,",
+    "the track_prompts -> default_prompt migration) -- not duplicated here.",
+    "",
+    "This file is not read literally beyond 'vendors' (including each vendor's",
+    "'temperature'), 'aggregation', 'tau', 'zero_policy', 'default_prompt',",
+    "'track_prompts' (unused here), and 'confidence_threshold' (see",
+    "attest.cli._load_ensemble_config) -- this _notes field is ignored by the loader and",
+    "safe to keep as documentation. That said: this specific file is a template only --",
+    "its default_prompt is not valid input for a real `attest screen` call."
+  ]
+}

@@ -1,0 +1,7 @@
+# Paired with ./config.json (runbook §2, §6). See
+# reviews/van_de_Schoot_2018/reviews.toml for the full design rationale (why runs are
+# never pooled) and the complete candidate-review table -- not repeated in every pair.
+
+reviews = [
+    "Appenzeller-Herzog_2019",
+]

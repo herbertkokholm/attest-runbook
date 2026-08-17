@@ -1,0 +1,39 @@
+# The SYNERGY review this file's paired ./config.json screens (runbook §2).
+#
+# Design (2026-08-17, revised): attest-runbook proves attest's core mechanism -- read a
+# title/abstract, apply one eligibility instruction, four vendors each vote
+# include/exclude/uncertain, decide whether to escalate -- by running the whole pipeline
+# independently once per review, never pooled. Each review is a genuinely different
+# screening question (its own eligibility criteria, its own domain), not a repeat of the
+# same measurement on different data -- pooling PTSD-trajectory criteria with
+# Wilson's-disease-drug criteria with spine-surgery-RCT criteria into one confusion matrix
+# would be averaging together answers to three different questions. See README §6.
+#
+# One reviews/<review>/ subfolder (config.json + reviews.toml) per review, so switching
+# which review the next run screens is a Makefile override, not a hand-edit:
+#   make all REVIEWS_FILE=reviews/Appenzeller-Herzog_2019/reviews.toml CONFIG=reviews/Appenzeller-Herzog_2019/config.json \
+#            RUN_DIR=data/run_Appenzeller-Herzog_2019 TRACK=Appenzeller-Herzog_2019 \
+#            VALIDATE_OUT=results/validation_record_Appenzeller-Herzog_2019.json
+# Each review's run is its own independent, self-contained proof, archived separately from
+# the others. Once at least two are done, `make review-summary` tabulates them side by side.
+#
+# Counts below are as published in the synergy-dataset v1.2 README
+# (https://github.com/asreview/synergy-dataset), cross-checked against this
+# file. Re-confirm with `synergy_dataset show <NAME>` before a real run if a
+# newer package/dataset version is in use, since these are not re-derived at
+# build time.
+#
+# The 3 review subfolders already drafted (any other SYNERGY review also works, it just
+# needs its own reviews/<name>/ subfolder -- see ../../example_config.json to start one):
+# name                      domain                    records  incl  incl%   subfolder
+# van_de_Schoot_2018        Psychology/Medicine           4544    38   0.8    this file
+# Appenzeller-Herzog_2019   Medicine                      2873    26   0.9    reviews/Appenzeller-Herzog_2019/
+# Muthu_2021                Medicine                      2719   336  12.4    reviews/Muthu_2021/
+#
+# Hall_2012 (computer science) and Moran_2021 (biology) are also viable candidates for
+# domain spread but were dropped before their counts were ever confirmed here -- run
+# `synergy_dataset show <NAME>` before using either, don't assume unstated numbers.
+
+reviews = [
+    "van_de_Schoot_2018",
+]
