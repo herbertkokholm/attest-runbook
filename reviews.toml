@@ -6,17 +6,19 @@
 # newer package/dataset version is in use, since these are not re-derived at
 # build time.
 #
+# First-run scope (2026-08-17): reduced from the original 5-track set to these
+# 3 -- Hall_2012 (computer science) and Moran_2021 (biology) dropped, keeping
+# an all-medicine/psychology, sparse-to-dense spread at lower cost. Their
+# criteria text remains in config.json's track_prompts, unused while absent
+# here, in case the set is expanded again for a later paper-level run.
+#
 # name                      domain                    records  incl  incl%
 # van_de_Schoot_2018        Psychology/Medicine           4544    38   0.8
 # Appenzeller-Herzog_2019   Medicine                      2873    26   0.9
-# Hall_2012                 Computer science              8793   104   1.2
-# Moran_2021                Biology/Medicine              5214   111   2.1
 # Muthu_2021                Medicine                      2719   336  12.4
 
 reviews = [
     "van_de_Schoot_2018",
     "Appenzeller-Herzog_2019",
-    "Hall_2012",
-    "Moran_2021",
     "Muthu_2021",
 ]

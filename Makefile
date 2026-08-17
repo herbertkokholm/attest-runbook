@@ -13,7 +13,7 @@ CONFIG       ?= config.json
 GOLD         ?= data/gold.json
 RUN_DIR      ?= data/run
 RESULTS_DIR  ?= results
-TRACK        ?= synergy-5-reviews
+TRACK        ?= synergy-3-reviews
 # Set to an int to use network-free DeterministicRaters instead of live
 # vendors, e.g. `make screen DETERMINISTIC_SEED=1` to smoke-test the
 # pipeline before spending on real vendor calls. Empty (default) = live.

@@ -68,27 +68,24 @@ include-vs-exclude.
 
 ---
 
-## §2 The chosen reviews (5 tracks)
-
-Selected for spread in domain and inclusion rate, at a total size that keeps 4-vendor
-screening affordable. Put these in `reviews.toml`.
+## §2 The chosen reviews (3 tracks)
 
 | Review | Domain | Records | Incl | Incl % | Why in the set |
 | --- | --- | --- | --- | --- | --- |
 | `van_de_Schoot_2018` | Psychology/Medicine | 4544 | 38 | 0.8% | Iconic PTSD review; sparse regime |
 | `Appenzeller-Herzog_2019` | Medicine | 2873 | 26 | 0.9% | Very sparse medicine; exercises the rule-of-three floor |
-| `Hall_2012` | Computer science | 8793 | 104 | 1.2% | Non-medical domain (software fault prediction); enough includes to estimate precision |
-| `Moran_2021` | Biology/Medicine | 5214 | 111 | 2.1% | Ecology/biology; mid inclusion rate |
 | `Muthu_2021` | Medicine | 2719 | 336 | 12.4% | Dense contrast; many includes; anchors the high end |
 
-Total ≈ 24,143 records; domains: psychology, medicine, computer science, biology;
-inclusion-rate span 0.8% → 12.4%.
+Total ≈ 10,136 records; domains: psychology, medicine; inclusion-rate span 0.8% → 12.4%.
+Trades away non-medical (computer science) and biology domain coverage from the original
+5-track set for a ~10k-record run instead of ~24k.
 
-Cost lever: ~24k records × 4 vendors ≈ ~96k screening calls. To trim, drop `Hall_2012`
-(largest at 8.8k) for a ~15k-record run, accepting less computer-science coverage; or
-swap it for `Smid_2020` (CS/Math, 2627 records, 27 incl, 1.0%) to keep a CS track at a
-fraction of the cost, accepting noisier precision from fewer includes. Confirm exact
-current counts with `synergy_dataset show <NAME>` before committing `reviews.toml`.
+Cost: ~10k records × 4 vendors ≈ ~40.5k screening calls. Confirm exact current counts
+with `synergy_dataset show <NAME>` before committing `reviews.toml`. To expand back
+toward the original spread later, re-add `Hall_2012` and/or `Moran_2021` (or swap in
+`Smid_2020`, CS/Math, 2627 records, 27 incl, 1.0%, for a cheaper CS track) — their
+eligibility criteria are already kept in `config.json`'s `track_prompts`, unused while
+absent from `reviews.toml`.
 
 ---
 
@@ -128,7 +125,7 @@ validated via `attest.contracts.input.validate_and_normalize` before being writt
   its criteria text (verbatim from SYNERGY's `datasets.toml`, reflowed to prose), and the
   kernel's `Config.prompt_for_track` resolves the right one per record from `record.track`
   (which `build_goldset.py` sets to the review name) — so one `attest screen` run correctly
-  screens all five reviews at once. **The kernel, not this file, owns the output-format
+  screens all three reviews at once. **The kernel, not this file, owns the output-format
   instruction**: `attest.vendors.base.compose_system_prompt` appends its own
   `OUTPUT_CONTRACT` ("Respond with exactly one token: -1/0/1...") to whatever criteria
   text a track supplies, on every rater path, and warns if the supplied criteria already
@@ -158,7 +155,7 @@ outputs through variables (`GOLD`, `RUN_DIR`, `CONFIG`, ...) with sensible defau
 override any of them on the command line; see the `Makefile`'s header comment.
 
 1. `make goldset` -> `build-goldset --reviews-file reviews.toml --project attest-paper --out data/gold.json`
-2. `make screen` -> `attest screen --input data/gold.json --config config.json --run-dir data/run --track synergy-5-reviews`
+2. `make screen` -> `attest screen --input data/gold.json --config config.json --run-dir data/run --track synergy-3-reviews`
    (the only paid, networked step; freeze `data/run/` after). Set `DETERMINISTIC_SEED=1`
    to smoke-test the whole pipeline with network-free, seeded raters first. This also
    runs `attest.ensemble.tau.validate_tau` against `config.json`'s `tau` and `x`,
