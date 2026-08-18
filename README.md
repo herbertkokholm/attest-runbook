@@ -159,18 +159,19 @@ even though a run's population never spans more than one track today.
 
 - Install: depend on `attest[all]` (git or local path) and `synergy-dataset`.
 - Copy `.env.example` to `.env` and set the vendors' API keys. `.env` is gitignored.
-- Four distinct vendor families, x = 4: Anthropic `claude-sonnet-5`, OpenAI `gpt-4o`,
-  Google `gemini-2.0-flash`, Mistral `mistral-large-latest`. The Mistral vendor needs the
-  `attest[mistral]` extra (`mistralai>=1.0`, already included in `attest[all]`) and
-  `MISTRAL_API_KEY`.
+- Four distinct vendor families, x = 4: Anthropic `claude-sonnet-5` (pinned), OpenAI and
+  Google (currently `TODO:pin-*-current-gen-dated-snapshot` — resolve before a real run),
+  Mistral `mistral-large-2512` (pinned). The Mistral vendor needs the `attest[mistral]`
+  extra (`mistralai>=2.9.1`, already included in `attest[all]`) and `MISTRAL_API_KEY`.
 - Each `reviews/<review>/config.json`: vendors, per-vendor model+version, per-vendor prompt
   version, aggregation rule (only `"boundary_dispersion"` is implemented in the kernel
   today; `majority`/`unanimity` are recognized names but raise `NotImplementedError`),
-  `tau` (currently `0.5`, treat as tunable and report whatever is used), `zero_policy`, and
-  `default_prompt`. Validated against the kernel's own loader
-  (`attest.cli._load_ensemble_config`) — see `reviews/van_de_Schoot_2018/config.json`'s
-  `_notes` for the full rationale behind every field (the other two review's `config.json`
-  files point back to it rather than repeating ~150 lines of history three times over).
+  `tau` (currently `0.5386751345948129`, treat as tunable and report whatever is used),
+  `zero_policy`, and `default_prompt`. Validated against the kernel's own loader
+  (`attest.cli._load_ensemble_config`) — see `reviews/README.md` for the full rationale
+  behind every field shared across reviews (each review's own `config.json`'s `_notes`
+  covers only what's specific to that review, so the shared rationale isn't repeated three
+  times over and going stale independently in each copy).
 - **One list, one prompt.** Every vendor is screened with that review's `default_prompt` —
   its own published eligibility criteria (verbatim from SYNERGY's `datasets.toml`,
   reflowed to prose), not a generic instruction and not a per-track dict:
@@ -182,11 +183,15 @@ even though a run's population never spans more than one track today.
   pooled run) still works if a future pooled run ever needs it again, but the default
   design deliberately doesn't use it. **The kernel, not this file, owns the output-format
   instruction**: `attest.vendors.base.compose_system_prompt` appends its own
-  `OUTPUT_CONTRACT` ("Respond with exactly one token: -1/0/1...") to whatever criteria
-  text is supplied, on every rater path, and warns if the supplied criteria already
-  contains a copy of it. So `default_prompt` must carry only eligibility criteria — never a
-  trailing "Respond with exactly one token..." sentence of its own, or the composed prompt
-  ships that instruction twice and trips the kernel's warning on every screen run.
+  `OUTPUT_CONTRACT` ("Respond with exactly one letter and nothing else: E to exclude, U if
+  related but uncertain, or I to include.") to whatever criteria text is supplied, on
+  every rater path, and warns if the supplied criteria already contains a copy of it. So
+  `default_prompt` must carry only eligibility criteria — never a trailing output-format
+  sentence of its own, or the composed prompt ships that instruction twice and trips the
+  kernel's warning on every screen run. The vote itself is that single letter; the kernel
+  separately translates it to a number (`-1`/`0`/`+1`) purely so `aggregation`/`tau`'s
+  dispersion arithmetic has something to compute over (see `reviews/README.md`'s tau
+  section) — the number is a computational convention, not what the vote is.
   `prompt_version` is still a provenance label only (`attest.provenance.config.VendorSpec`
   doesn't read it back), so keep it bumped by hand whenever `default_prompt` changes, or it
   will misrepresent what ran.
@@ -275,7 +280,7 @@ run against a different review's subfolder; see the `Makefile`'s header comment.
    validation-record schema, refuses to run while any escalation remains unresolved unless
    `--allow-unresolved-escalations` is passed explicitly — see the field
    `unresolved_escalations` in the output.
-7. `make ablate` -> `attest ablate --run-dir data/run --input data/gold.json --aggregation boundary_dispersion --tau 0.5 --zero-policy escalate --out results/ablation.json`
+7. `make ablate` -> `attest ablate --run-dir data/run --input data/gold.json --aggregation boundary_dispersion --tau 0.5386751345948129 --zero-policy escalate --out results/ablation.json`
    (`ablate` reads its own `--aggregation`/`--tau`/`--zero-policy`, not `CONFIG` — the
    Makefile's `AGGREGATION`/`TAU`/`ZERO_POLICY` variables must be kept in sync with the
    active `reviews/<review>/config.json` by hand). Because the set of attainable
@@ -462,7 +467,7 @@ not a separate mechanism.
 
 - [ ] `REVIEWS_FILE`/`CONFIG` point at the same review's `reviews/<review>/` subfolder — check both, not just one.
 - [ ] Four distinct vendor families configured in `.env`; the active `config.json` has `x = 4`, a stated `tau`, a stated `zero_policy`, versioned prompt.
-- [ ] `default_prompt` carries only eligibility criteria — no trailing "Respond with exactly one token..." sentence; the kernel appends the output contract itself.
+- [ ] `default_prompt` carries only eligibility criteria — no trailing output-format sentence of its own; the kernel appends the `E`/`U`/`I` output contract itself.
 - [ ] `default_prompt` was verified word for word against `asreview/synergy-dataset`'s live `datasets.toml`, not trusted from an old paraphrase (see `reviews/Appenzeller-Herzog_2019/config.json`'s `_notes` for why this matters).
 - [ ] `RUN_DIR`/`VALIDATE_OUT`/`TRACK` all reflect the active review's name (e.g. `data/run_van_de_Schoot_2018`), not a stale value from a previous review's run.
 - [ ] Audit budget chosen from the recall precision to be claimed.
