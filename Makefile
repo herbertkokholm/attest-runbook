@@ -1,5 +1,15 @@
 .DEFAULT_GOAL := help
 
+# Best-effort commit of the installed `attest` package (see
+# attest.provenance.manifest.software_version), so every manifest this pipeline
+# produces records a real commit by default instead of an unset field. An
+# already-exported ATTEST_SOURCE_COMMIT from the caller's environment takes
+# precedence over this (?= only assigns when unset); resolve-attest-source-commit
+# prints nothing (leaving this empty) when it can't determine a commit, e.g.
+# attest was installed some way other than editable-local or a pinned git ref.
+ATTEST_SOURCE_COMMIT ?= $(shell resolve-attest-source-commit)
+export ATTEST_SOURCE_COMMIT
+
 # Per-review pipeline stages (runbook §5). Each run screens exactly one review, using
 # that review's own reviews/<review>/reviews.toml + config.json subfolder (runbook §2, §6
 # explain why: reviews are different screening questions, never pooled) -- proving

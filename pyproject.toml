@@ -20,13 +20,14 @@ build-sentinelset = "build_sentinelset:main"
 score-audit = "score_audit:main"
 adjudicate-from-gold = "adjudicate_from_gold:main"
 review-summary = "review_summary:main"
+resolve-attest-source-commit = "resolve_attest_source_commit:main"
 
 [project.optional-dependencies]
 dev = ["ruff", "mypy", "pytest"]
 
 [tool.setuptools]
 package-dir = { "" = "src" }
-py-modules = ["build_goldset", "build_sentinelset", "score_audit", "adjudicate_from_gold", "review_summary"]
+py-modules = ["build_goldset", "build_sentinelset", "score_audit", "adjudicate_from_gold", "review_summary", "resolve_attest_source_commit"]
 
 [tool.ruff]
 line-length = 100
