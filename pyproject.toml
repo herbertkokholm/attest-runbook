@@ -18,6 +18,7 @@ dependencies = [
 build-goldset = "build_goldset:main"
 build-sentinelset = "build_sentinelset:main"
 score-audit = "score_audit:main"
+adjudicate-from-gold = "adjudicate_from_gold:main"
 review-summary = "review_summary:main"
 
 [project.optional-dependencies]
@@ -25,7 +26,7 @@ dev = ["ruff", "mypy", "pytest"]
 
 [tool.setuptools]
 package-dir = { "" = "src" }
-py-modules = ["build_goldset", "build_sentinelset", "score_audit", "review_summary"]
+py-modules = ["build_goldset", "build_sentinelset", "score_audit", "adjudicate_from_gold", "review_summary"]
 
 [tool.ruff]
 line-length = 100

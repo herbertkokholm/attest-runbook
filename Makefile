@@ -86,17 +86,17 @@ APPROVER         ?=
 # than STRATIFY_NONE so both still work unchanged if a pooled multi-review run ever returns.
 STRATIFY_BY              ?= track
 AUDIT_SIZE_POLICY        ?= n=$(AUDIT_SIZE) exclusions (rule-of-three floor)
-ADJUDICATION_DESCRIPTION ?= Fully automatic: score-audit scores drawn records against SYNERGY's published gold labels; no live human reviewer in this repo's pipeline.
+ADJUDICATION_DESCRIPTION ?= Fully automatic, benchmark-only: adjudicate-from-gold resolves every ensemble-escalated decision to SYNERGY's published gold label, stamped reviewer="oracle-benchmark-gold"; no live human reviewer resolves escalations in this repo's pipeline. (The separate recall-audit plane's gold-scoring is described by AUDIT_SIZE_POLICY above, not here.)
 HARD_TRIGGER_CROSSINGS   ?= 2
 ADVISORY_ALPHA_THRESHOLD ?= 0.80
 SENTINEL_CADENCE_NOTE    ?= sentinel-init runs immediately after screen; sentinel-check runs once after the epoch's pipeline completes. For a --mode batch --wait screen run spanning hours, re-run 'make sentinel-check' manually every few hours while the batch is outstanding.
 
 .PHONY: help dirs goldset sentinelset screen sentinel-init audit-draw audit-score audit-apply \
-	validate ablate protocol sentinel-check manifest verify review-summary all clean-run
+	adjudicate validate ablate protocol sentinel-check manifest verify review-summary all clean-run
 
 help:
 	@echo "targets: goldset sentinelset screen sentinel-init audit-draw audit-score audit-apply \\"
-	@echo "         validate ablate protocol sentinel-check manifest verify review-summary all clean-run"
+	@echo "         adjudicate validate ablate protocol sentinel-check manifest verify review-summary all clean-run"
 
 dirs:
 	mkdir -p data $(RESULTS_DIR)
@@ -143,6 +143,17 @@ audit-score: dirs
 ## 5. Apply the scored audit labels to the run.
 audit-apply:
 	attest audit-apply --run-dir $(RUN_DIR) --labels $(AUDIT_DONE)
+
+## 5b. Resolve every ensemble-escalated decision (a tied or boundary-straddling vote
+##     vector) from SYNERGY's published gold labels, stamped reviewer="oracle-benchmark-gold"
+##     -- benchmark evaluation only, never presented as live human adjudication. Without
+##     this, `validate` refuses to run whenever screening produced any escalation: methods
+##     Sec. 2.9 requires every include-and-escalate record resolved before TP/recall means
+##     anything. To layer an independent human pass instead, resolve escalations via
+##     `attest adjudicate --record-id ... --label ...` before this step and it becomes a
+##     no-op (nothing left pending).
+adjudicate:
+	adjudicate-from-gold --run-dir $(RUN_DIR) --gold $(GOLD)
 
 ## 6. Assemble the validation record (alpha, recall floor + CI, escalation
 ##    rate, confusion) for the run directory's current epoch -- for the one review
@@ -209,7 +220,7 @@ review-summary: dirs
 ## change) -- the same fresh-RUN_DIR convention also applies to a deliberate config change
 ## within one review's own sequence of epochs, via PREVIOUS_RUN_DIR/CHANGE_REASON/APPROVER
 ## above.
-all: goldset screen sentinel-init audit-draw audit-score audit-apply validate \
+all: goldset screen sentinel-init audit-draw audit-score audit-apply adjudicate validate \
 	ablate protocol sentinel-check manifest verify
 
 ## Remove one epoch's run directory and audit files so it can be redone.

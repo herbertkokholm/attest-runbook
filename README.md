@@ -257,10 +257,24 @@ run against a different review's subfolder; see the `Makefile`'s header comment.
    reproducible audit with no manual step required. To layer an independent human pass on
    top, edit `data/audit_done.json` before the next step.
 5. `make audit-apply` -> `attest audit-apply --run-dir data/run --labels data/audit_done.json`
+5b. `make adjudicate` -> `adjudicate-from-gold --run-dir data/run --gold data/gold.json` resolves
+    every ensemble-escalated decision (a tied or boundary-straddling vote vector) to SYNERGY's
+    published gold label, stamped `reviewer="oracle-benchmark-gold"` in
+    `data/run/adjudication_records.json` — benchmark evaluation only, never presented as live
+    human adjudication. Without this step, `validate` refuses to run whenever screening
+    produced any escalation (methods Sec. 2.9 requires every include-and-escalate record
+    resolved before TP/recall means anything). To layer an independent human pass instead,
+    resolve escalations via `attest adjudicate --run-dir data/run --record-id ... --label ...`
+    before this step; it becomes a no-op once nothing is left pending.
 6. `make validate` -> `attest validate --run-dir data/run --input data/gold.json --confidence 0.95 --out results/validation_record.json`
    assembles alpha, the confusion matrix, escalation rate, and the recall floor + CI for
    this one review's run. Never pooled across reviews — see §6 for `review-summary`, which
-   compares multiple already-completed, independent runs once more than one exists.
+   compares multiple already-completed, independent runs once more than one exists. Reads
+   this run's own `adjudication_records.json` automatically to resolve escalations (from
+   either `adjudicate-from-gold` or `attest adjudicate`) and, since v1.2 of the
+   validation-record schema, refuses to run while any escalation remains unresolved unless
+   `--allow-unresolved-escalations` is passed explicitly — see the field
+   `unresolved_escalations` in the output.
 7. `make ablate` -> `attest ablate --run-dir data/run --input data/gold.json --aggregation boundary_dispersion --tau 0.5 --zero-policy escalate --out results/ablation.json`
    (`ablate` reads its own `--aggregation`/`--tau`/`--zero-policy`, not `CONFIG` — the
    Makefile's `AGGREGATION`/`TAU`/`ZERO_POLICY` variables must be kept in sync with the
