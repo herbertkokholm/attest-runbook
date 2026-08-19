@@ -172,13 +172,13 @@ even though a run's population never spans more than one track today.
   behind every field shared across reviews (each review's own `config.json`'s `_notes`
   covers only what's specific to that review, so the shared rationale isn't repeated three
   times over and going stale independently in each copy).
-- **`batch_size`** (`attest.provenance.config.Config.batch_size`, "b_e") is hashed into
-  `ensemble_config_id` like every field above, but deliberately absent from the checked-in
-  `config.json` itself: it must equal the exact number of records attest's own prefilter
-  keeps from that review's `data/gold.json`, which `make resolved-config`
-  (`src/resolve_batch_size.py`, a prerequisite of `make screen`) computes and patches into
-  `data/config.resolved.json` — the file `attest screen` actually reads. See
-  `reviews/README.md`'s `batch_size` section for why it can't be hand-maintained here.
+- **`batch_size`** (`attest.provenance.config.Config.batch_size`, "b_e") is the number of
+  records attest packs into one screening request, hashed into `ensemble_config_id` like
+  every field above. Set to `1` explicitly in every `reviews/<review>/config.json` — one
+  record per request, this pipeline's actual instrument (§4/§6: one record at a time, four
+  vendors voting independently on it) — rather than left to attest's own fallback default
+  (also `1`), so the file states its instrument outright instead of implying it. See
+  `reviews/README.md`'s `batch_size` section for the full rationale.
 - **One list, one prompt.** Every vendor is screened with that review's `default_prompt` —
   its own published eligibility criteria (verbatim from SYNERGY's `datasets.toml`,
   reflowed to prose), not a generic instruction and not a per-track dict:
@@ -246,11 +246,7 @@ run against a different review's subfolder; see the `Makefile`'s header comment.
    Not part of `make all`, since a run assumes it already exists. Freeze it
    (`git add -f`) only if/when a second epoch is opened for the same review — see §6.
 1. `make goldset` -> `build-goldset --reviews-file reviews/van_de_Schoot_2018/reviews.toml --project attest-paper --out data/gold.json`
-   1. `make resolved-config` -> `resolve-batch-size --gold data/gold.json --config-in reviews/van_de_Schoot_2018/config.json --config-out data/config.resolved.json`
-      patches this review's `config.json` with its `batch_size` (the number of records
-      attest's own prefilter keeps from `data/gold.json`) — a prerequisite of `screen`
-      below, not a step to run separately; see `reviews/README.md`'s `batch_size` section.
-2. `make screen` -> `attest screen --input data/gold.json --config data/config.resolved.json --run-dir data/run --track van_de_Schoot_2018`
+2. `make screen` -> `attest screen --input data/gold.json --config reviews/van_de_Schoot_2018/config.json --run-dir data/run --track van_de_Schoot_2018`
    (the only paid, networked step; freeze `data/run/` after). `--track` is a free-text
    provenance label only (keep it naming the same review as `REVIEWS_FILE`/`CONFIG`) —
    which review's criteria actually get applied comes from `CONFIG`'s `default_prompt`,
