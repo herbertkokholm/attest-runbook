@@ -52,8 +52,14 @@ def test_write_resolved_config_patches_batch_size_and_preserves_other_fields(
     config_in.write_text(
         json.dumps(
             {
-                "vendors": {"v1": {"model": "m", "model_version": "1", "prompt_version": "p1",
-                                    "temperature": 0.0}},
+                "vendors": {
+                    "v1": {
+                        "model": "m",
+                        "model_version": "1",
+                        "prompt_version": "p1",
+                        "temperature": 0.0,
+                    }
+                },
                 "aggregation": "boundary_dispersion",
                 "tau": 1.0,
                 "_notes": ["kept as-is"],
