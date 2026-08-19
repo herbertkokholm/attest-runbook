@@ -65,6 +65,13 @@
     "'track_prompts' (unused here), and 'confidence_threshold' (see",
     "attest.cli._load_ensemble_config) -- this _notes field is ignored by the loader and",
     "safe to keep as documentation. That said: this specific file is a template only --",
-    "its default_prompt is not valid input for a real `attest screen` call."
+    "its default_prompt is not valid input for a real `attest screen` call.",
+    "",
+    "'batch_size' (attest.provenance.config.Config.batch_size, \"b_e\") is also",
+    "deliberately absent here, same as in every reviews/<name>/config.json: it must equal",
+    "the exact number of records attest's own prefilter keeps from that review's",
+    "data/gold.json, so 'make resolved-config' (src/resolve_batch_size.py) patches it in",
+    "at build time rather than it being copied by hand -- see reviews/README.md's",
+    "batch_size section."
   ]
 }

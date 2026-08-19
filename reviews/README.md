@@ -7,6 +7,10 @@ so it must not vary between them. This file explains what each of those shared f
 means and why it's set the way it is, so that reasoning doesn't need repeating (and
 independently drifting) in three `_notes` arrays or in the README.
 
+`batch_size` is a third kind of field, alongside these shared ones and `default_prompt`:
+present in neither this checked-in file nor identical across reviews, since it is the
+record count of that review's own `data/gold.json` — see its own section below.
+
 Each review's own `config.json`'s `_notes` carries only what's specific to that review:
 the `default_prompt`-verified-against-source note.
 
@@ -71,6 +75,30 @@ since the attainable-dispersion set depends on x, one fixed tau isn't behavioral
 comparable in strength across the swept subset sizes x' < 4 — xsweep attaches each
 subset's own `describe_tau()` to the ablation report and warns once per sweep, which is
 expected and needs no config change.
+
+## batch_size
+
+`attest.provenance.config.Config.batch_size` ("b_e" in the manuscript's `C_e` tuple) is
+hashed into `ensemble_config_id` unconditionally, on par with `vendors`/`aggregation`/
+`tau` — a change to it opens a new epoch, same as any of those. Unlike them, it is
+deliberately absent from every checked-in `reviews/<review>/config.json`: it must equal
+the exact number of records `attest`'s own prefilter keeps from that review's
+`data/gold.json` (`attest.cli._check_batch_size` rejects `screen` on any mismatch), and
+that count depends on whichever `synergy-dataset` package version built the gold set — a
+number this repo has no business hand-maintaining or letting go stale in git.
+
+`make resolved-config` (`src/resolve_batch_size.py`, run automatically as a prerequisite
+of `make screen`) computes it with the kernel's own prefilter rule
+(`attest.prefilter.framework.require_nonempty("abstract")`, mirroring
+`attest.cli._DEFAULT_PREFILTER`) applied to `data/gold.json`, and writes a copy of
+`config.json` with `batch_size` set to `data/config.resolved.json` — gitignored,
+regenerated every run. `attest screen` reads `data/config.resolved.json`, never
+`config.json` directly (see the Makefile's `screen` target). In practice this equals
+`len(data/gold.json's records)` for this repo's own pipeline, since `build_goldset.py`
+already drops empty-abstract records before writing the gold set — but
+`resolve_batch_size.py` re-derives it from the kernel's own rule rather than assuming that
+stays true, so it can't silently drift out of sync if that upstream drop logic ever
+changes.
 
 ## default_prompt / track_prompts
 
@@ -147,3 +175,6 @@ Each `reviews/<review>/config.json` is not read literally beyond `vendors` (incl
 each vendor's `temperature`), `aggregation`, `tau`, `zero_policy`, `default_prompt`,
 `track_prompts`, and `confidence_threshold` (see `attest.cli._load_ensemble_config`) —
 `_notes`, and this file, are ignored by the loader and safe to keep as documentation.
+`batch_size` is deliberately not among them: `attest screen` never reads `config.json`
+directly (see the `batch_size` section above) — it reads `data/config.resolved.json`,
+which carries every field above plus `batch_size`.

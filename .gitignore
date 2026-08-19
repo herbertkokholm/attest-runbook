@@ -5,6 +5,10 @@ data/gold.json
 data/audit_todo.json
 data/audit_done.json
 
+# Regenerated every run via resolve_batch_size.py: config.json patched with
+# this run's batch_size (attest.provenance.config.Config.batch_size).
+data/config.resolved.json
+
 # Rebuilt via build-sentinelset (runbook §6) at the start of each real run;
 # disposable until then. Freeze deliberately ONLY when opening a second epoch:
 # `git add -f data/sentinel_set.json` the exact file epoch 1's sentinel-init

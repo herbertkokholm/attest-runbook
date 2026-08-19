@@ -28,6 +28,10 @@ export ATTEST_SOURCE_COMMIT
 PROJECT      ?= attest-paper
 REVIEWS_FILE ?= reviews/van_de_Schoot_2018/reviews.toml
 CONFIG       ?= reviews/van_de_Schoot_2018/config.json
+# $(CONFIG) patched with this run's batch_size (attest.provenance.config.Config.batch_size,
+# "b_e") -- see the `resolved-config` target below. Gitignored, regenerated every run;
+# `screen` reads this, never $(CONFIG) directly.
+RESOLVED_CONFIG ?= data/config.resolved.json
 GOLD         ?= data/gold.json
 RUN_DIR      ?= data/run
 RESULTS_DIR  ?= results
@@ -101,11 +105,11 @@ HARD_TRIGGER_CROSSINGS   ?= 2
 ADVISORY_ALPHA_THRESHOLD ?= 0.80
 SENTINEL_CADENCE_NOTE    ?= sentinel-init runs immediately after screen; sentinel-check runs once after the epoch's pipeline completes. For a --mode batch --wait screen run spanning hours, re-run 'make sentinel-check' manually every few hours while the batch is outstanding.
 
-.PHONY: help dirs goldset sentinelset screen sentinel-init audit-draw audit-score audit-apply \
+.PHONY: help dirs goldset resolved-config sentinelset screen sentinel-init audit-draw audit-score audit-apply \
 	adjudicate validate ablate protocol sentinel-check manifest verify review-summary all clean-run
 
 help:
-	@echo "targets: goldset sentinelset screen sentinel-init audit-draw audit-score audit-apply \\"
+	@echo "targets: goldset resolved-config sentinelset screen sentinel-init audit-draw audit-score audit-apply \\"
 	@echo "         adjudicate validate ablate protocol sentinel-check manifest verify review-summary all clean-run"
 
 dirs:
@@ -122,12 +126,22 @@ sentinelset: dirs
 goldset: dirs
 	build-goldset --reviews-file $(REVIEWS_FILE) --project $(PROJECT) --out $(GOLD)
 
+## 1b. Patch $(CONFIG) with this run's batch_size (attest.provenance.config.Config.batch_size,
+##     "b_e", hashed into ensemble_config_id on par with vendors/aggregation/tau) -- the
+##     number of records attest's own prefilter keeps from $(GOLD), computed with the kernel's
+##     own prefilter rule (see src/resolve_batch_size.py), never hand-maintained in the
+##     checked-in config.json since it depends on whichever synergy-dataset version built
+##     $(GOLD). Regenerated every run; `screen` reads $(RESOLVED_CONFIG), never $(CONFIG)
+##     directly.
+resolved-config: dirs
+	resolve-batch-size --gold $(GOLD) --config-in $(CONFIG) --config-out $(RESOLVED_CONFIG)
+
 ## 2. Run the prefilter + x-vendor ensemble over the gold set. The only
 ##    paid, networked stage -- freeze $(RUN_DIR) once this succeeds. On a fresh
 ##    RUN_DIR, logs an initial_config changelog event by default, or an
 ##    explicit_config_change event when PREVIOUS_RUN_DIR/CHANGE_REASON/APPROVER are set.
-screen: dirs
-	attest screen --input $(GOLD) --config $(CONFIG) --run-dir $(RUN_DIR) --track $(TRACK) \
+screen: dirs resolved-config
+	attest screen --input $(GOLD) --config $(RESOLVED_CONFIG) --run-dir $(RUN_DIR) --track $(TRACK) \
 		$(if $(DETERMINISTIC_SEED),--deterministic-seed $(DETERMINISTIC_SEED),) \
 		$(if $(PREVIOUS_RUN_DIR),--previous-run-dir $(PREVIOUS_RUN_DIR),) \
 		$(if $(CHANGE_REASON),--change-reason "$(CHANGE_REASON)",) \
@@ -230,7 +244,7 @@ review-summary: dirs
 ## change) -- the same fresh-RUN_DIR convention also applies to a deliberate config change
 ## within one review's own sequence of epochs, via PREVIOUS_RUN_DIR/CHANGE_REASON/APPROVER
 ## above.
-all: goldset screen sentinel-init audit-draw audit-score audit-apply adjudicate validate \
+all: goldset resolved-config screen sentinel-init audit-draw audit-score audit-apply adjudicate validate \
 	ablate protocol sentinel-check manifest verify
 
 ## Remove one epoch's run directory and audit files so it can be redone.

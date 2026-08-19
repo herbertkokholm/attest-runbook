@@ -31,7 +31,7 @@
   "zero_policy": "escalate",
   "default_prompt": "You are screening a record for a systematic review on drug treatments for Wilson's disease. Read the title and abstract and decide whether the record should be included, applying this review's published eligibility criteria (SYNERGY dataset; original review DOI 10.1111/liv.14179): patients with Wilson's disease (WD) of any age or stage; the study drug must be one of four established therapies (D-penicillamine, trientine, TTM, or zinc); the control/comparator must not include the study drug itself (e.g. placebo, no treatment, or a different one of the four therapies), with matched doses across arms; concomitant therapies must be identical across the compared arms; comparisons between a monotherapy and a combination regimen that includes that same monotherapy drug (e.g. D-penicillamine plus zinc vs. zinc alone) are excluded, not merely out of scope; the study must report at least one of all-cause mortality, orthotopic liver transplantation, neurological symptoms, liver-related symptoms, adverse effects, or frequency of treatment discontinuation; and the study must be a prospective or retrospective study, including randomized, non-randomized controlled trials or comparative observational studies, in English, German, Dutch, French, Spanish, or Portuguese. Exclude animal studies, case reports, case series, cross-sectional studies, before-after studies, reviews, letters, abstract-only publications, editorials, diagnostic or other testing studies, and non-controlled studies.",
   "_notes": [
-    "One of 3 per-review config files (runbook §2, §6) -- vendors/aggregation/tau/",
+    "One of 3 per-review config files (runbook \u00a72, \u00a76) -- vendors/aggregation/tau/",
     "zero_policy/confidence_threshold are identical across all three by design",
     "(the same fixed instrument, screening a different review each run); only",
     "default_prompt differs. See ../README.md for the full history/rationale behind",
@@ -54,6 +54,17 @@
     "vendor's 'temperature'), 'aggregation', 'tau', 'zero_policy',",
     "'default_prompt', 'track_prompts' (unused here), and",
     "'confidence_threshold' (see attest.cli._load_ensemble_config) -- this",
-    "_notes field is ignored by the loader and safe to keep as documentation."
+    "_notes field is ignored by the loader and safe to keep as documentation.",
+    "",
+    "'batch_size' (attest.provenance.config.Config.batch_size, \"b_e\") is",
+    "deliberately absent from this checked-in template: it must equal the",
+    "exact number of records attest's own prefilter keeps from this run's",
+    "data/gold.json, which depends on whichever synergy-dataset version",
+    "built it, so it is not a number this file can safely hand-carry.",
+    "`make resolved-config` (src/resolve_batch_size.py) patches it in at",
+    "build time, writing data/config.resolved.json -- the file `attest",
+    "screen` actually reads (see Makefile). Do not add a literal",
+    "'batch_size' here; a stale hardcoded value would only be silently",
+    "overwritten by the patch step, or worse, mislead a reader of this file."
   ]
 }

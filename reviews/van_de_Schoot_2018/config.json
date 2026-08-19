@@ -31,7 +31,7 @@
   "zero_policy": "escalate",
   "default_prompt": "You are screening a record for a systematic review on longitudinal trajectories of post-traumatic stress symptoms. Read the title and abstract and decide whether the record should be included, applying this review's published eligibility criteria (SYNERGY dataset; original review DOI 10.1080/00273171.2017.1412293): the study must be a longitudinal study with at least three measurement waves measuring PTSD; PTSD must be measured on a continuous scale via an interview or questionnaire; the study must use a clustering method (LGMM, LCGA, or hierarchical cluster analysis); and the traumatic stress symptoms must follow events that appeared to fulfill DSM-IV criterion A1 for PTSD or acute stress disorder.",
   "_notes": [
-    "One of 3 per-review config files (runbook §2, §6) -- vendors/aggregation/tau/",
+    "One of 3 per-review config files (runbook \u00a72, \u00a76) -- vendors/aggregation/tau/",
     "zero_policy/confidence_threshold are identical across all three by design",
     "(the same fixed instrument, screening a different review each run); only",
     "default_prompt differs. See ../README.md for the full history/rationale behind",
@@ -53,6 +53,17 @@
     "vendor's 'temperature'), 'aggregation', 'tau', 'zero_policy',",
     "'default_prompt', 'track_prompts' (unused here), and",
     "'confidence_threshold' (see attest.cli._load_ensemble_config) -- this",
-    "_notes field is ignored by the loader and safe to keep as documentation."
+    "_notes field is ignored by the loader and safe to keep as documentation.",
+    "",
+    "'batch_size' (attest.provenance.config.Config.batch_size, \"b_e\") is",
+    "deliberately absent from this checked-in template: it must equal the",
+    "exact number of records attest's own prefilter keeps from this run's",
+    "data/gold.json, which depends on whichever synergy-dataset version",
+    "built it, so it is not a number this file can safely hand-carry.",
+    "`make resolved-config` (src/resolve_batch_size.py) patches it in at",
+    "build time, writing data/config.resolved.json -- the file `attest",
+    "screen` actually reads (see Makefile). Do not add a literal",
+    "'batch_size' here; a stale hardcoded value would only be silently",
+    "overwritten by the patch step, or worse, mislead a reader of this file."
   ]
 }
