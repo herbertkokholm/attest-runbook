@@ -80,6 +80,18 @@ width, not a corpus-size assertion. It is hashed into `ensemble_config_id`
 unconditionally, on par with `vendors`/`aggregation`/`tau` — a change to it opens a new
 epoch, same as any of those.
 
+It's hashed, not just a throughput setting, because batch size measurably changes model
+behavior, not merely cost/latency: Fagerberg et al., "Batch Size Effects on Mid-2025
+State-of-the-Art Large Language Model Performance in Automated Title and Abstract
+Screening" (*Cochrane Evidence Synthesis and Methods*, 2026;
+[10.1002/cesm.70082](https://doi.org/10.1002/cesm.70082)), found sensitivity/specificity
+shifting with batch size in a model-dependent, non-monotonic way when packing multiple
+references into one prompt — e.g. GPT-5 mini's sensitivity fell from 0.88 at batch 200 to
+0.48 at batch 400, while Gemini 2.5 Flash's sensitivity was low at batch 1 and rose with
+larger batches. A `batch_size` change is therefore a change to the instrument itself, the
+same epoch-opening category as a model or prompt change — not a value `attest` is free to
+vary silently between runs.
+
 Set to `1` explicitly in every checked-in `reviews/<review>/config.json`: one record per
 request, matching this pipeline's actual instrument (§4/§6 — one record at a time, four
 vendors voting independently on it, no request-level pooling). `attest` itself defaults
