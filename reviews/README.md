@@ -102,10 +102,9 @@ as unstated kernel defaults.
 
 `attest` chunks up to `batch_size` records into one request (grouped by resolved prompt
 first), so a value above `1` would pack that many records into a single request per
-prompt group per vendor — and two of this pipeline's four vendors (Mistral, Google) don't
-yet support packing more than one record per request; they raise rather than silently
-falling back to one request each. `batch_size: 1` is the value that works uniformly
-across all four.
+prompt group per vendor, across all four vendors used here — every provider `attest`
+supports packs multiple records into one request the same way, so this is a real choice
+of instrument, not a vendor-capability constraint.
 
 ## default_prompt / track_prompts
 
