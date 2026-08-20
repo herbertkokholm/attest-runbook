@@ -75,7 +75,10 @@ inclusion, metadata sourced from OpenAlex, distributed via the `synergy-dataset`
 package. Why it fits:
 
 - Ground truth is published, human-adjudicated inclusion from real reviews, not ours.
-- Extreme label sparsity (~1.67%) is the regime the rule-of-three recall floor exists for.
+- Extreme label sparsity (~1.67%) is the regime the recall floor exists for: `validate`
+  reports both a rule-of-three/Wilson asymptotic floor and an exact, design-based
+  hypergeometric floor (`recall.floor` / `recall.exact_floor`) side by side, not one
+  replacing the other.
 - 26 independent reviews across many domains, so the core mechanism can be proven
   review-by-review rather than on a single dataset.
 - It is the benchmark the field already uses, so results are comparable and recognizable.
@@ -268,7 +271,11 @@ run against a different review's subfolder; see the `Makefile`'s header comment.
    `score-audit`, this repo's script), writing `data/audit_done.json` — a fully
    reproducible audit with no manual step required. To layer an independent human pass on
    top, edit `data/audit_done.json` before the next step.
-5. `make audit-apply` -> `attest audit-apply --run-dir data/run --labels data/audit_done.json`
+5. `make audit-apply` -> `attest audit-apply --run-dir data/run --labels data/audit_done.json
+   --reviewer oracle-benchmark-gold --blinded` — stamped with the same
+   `reviewer="oracle-benchmark-gold"` provenance as step 5b below; `--blinded` because
+   `score-audit` looks up SYNERGY's published gold label without ever seeing the ensemble's
+   screen-excluded decision, same as a real blinded human auditor would be.
 5b. `make adjudicate` -> `adjudicate-from-gold --run-dir data/run --gold data/gold.json` resolves
     every ensemble-escalated decision (a tied or boundary-straddling vote vector) to SYNERGY's
     published gold label, stamped `reviewer="oracle-benchmark-gold"` in
@@ -278,7 +285,8 @@ run against a different review's subfolder; see the `Makefile`'s header comment.
     resolved before TP/recall means anything). To layer an independent human pass instead,
     resolve escalations via `attest adjudicate --run-dir data/run --record-id ... --label ...`
     before this step; it becomes a no-op once nothing is left pending.
-6. `make validate` -> `attest validate --run-dir data/run --input data/gold.json --confidence 0.95 --out results/validation_record.json`
+6. `make validate` -> `attest validate --run-dir data/run --input data/gold.json --confidence 0.95
+   --max-staleness-days 1 --out results/validation_record.json`
    assembles alpha, the confusion matrix, escalation rate, and the recall floor + CI for
    this one review's run. Never pooled across reviews — see §6 for `review-summary`, which
    compares multiple already-completed, independent runs once more than one exists. Reads
@@ -286,7 +294,15 @@ run against a different review's subfolder; see the `Makefile`'s header comment.
    either `adjudicate-from-gold` or `attest adjudicate`) and, since v1.2 of the
    validation-record schema, refuses to run while any escalation remains unresolved unless
    `--allow-unresolved-escalations` is passed explicitly — see the field
-   `unresolved_escalations` in the output.
+   `unresolved_escalations` in the output. Since v1.4, `recall.floor` (the rule-of-three/
+   Wilson asymptotic approximation) is reported alongside `recall.exact_floor` (an exact,
+   design-based hypergeometric bound, see §1) rather than one replacing the other; with
+   `AUDIT_SIZE=all` (a full census of the screen-excluded population, this repo's default)
+   both collapse toward the point estimate, since a census leaves no sampling uncertainty to
+   bound — the gap between them only opens up if `AUDIT_SIZE` is overridden to a real sample
+   smaller than the full population. `--max-staleness-days` (`SENTINEL_MAX_STALENESS_DAYS`
+   in the Makefile) reports `sentinel_staleness` in the output, warning (not failing) if the
+   sentinel's last recorded evaluation is older than that many days — see §6.
 7. `make ablate` -> `attest ablate --run-dir data/run --input data/gold.json --aggregation boundary_dispersion --tau 0.5386751345948129 --zero-policy escalate --out results/ablation.json`
    (`ablate` reads its own `--aggregation`/`--tau`/`--zero-policy`, not `CONFIG` — the
    Makefile's `AGGREGATION`/`TAU`/`ZERO_POLICY` variables must be kept in sync with the
@@ -422,6 +438,14 @@ is outstanding — there is no automated poller for this, by design. This cadenc
 itself recorded, verbatim, in every persisted protocol's `sentinel_policy.cadence_note`
 (the Makefile's `SENTINEL_CADENCE_NOTE`).
 
+`validate`'s `--max-staleness-days` (`SENTINEL_MAX_STALENESS_DAYS`, default 1 day) is the
+machine-checkable counterpart to this manual cadence: it compares the sentinel's last
+recorded `evaluated_at` against that threshold and reports the result in
+`sentinel_staleness`, warning by default (or failing closed with
+`--fail-on-stale-sentinel`, not wired into this Makefile) if `sentinel-check` was never run
+this epoch or hasn't run recently enough — a trace, in the validation record itself, that
+this section's manual cadence was actually followed rather than an unverifiable claim.
+
 **The sentinel set: build vs. freeze.** `data/sentinel_set.json` is gitignored, like
 `data/gold.json` — everything before a real run (including any copy currently in this repo
 during development) is disposable, just a "is the pipeline in mint condition" check, not a
@@ -455,7 +479,7 @@ not a separate mechanism.
 | `validation_record_<review>.json` alpha + pairwise matrix | Inter-vendor reliability, per review |
 | `validation_record_<review>.json` conditional FN correlation | Independence-as-empirical-property (2.6), per review |
 | `validation_record_<review>.json` escalation rate | Human-escalation-rate result, per review |
-| `validation_record_<review>.json` recall point + floor + CI | Headline recall claim per review, reported as floor with its audit budget |
+| `validation_record_<review>.json` recall point + floor + exact_floor + CI | Headline recall claim per review, reported as floor with its audit budget |
 | `validation_record_<review>.json` confusion | Confusion structure beside the coefficients, per review |
 | `review_summary.json` (from `review-summary`) | The actual cross-review proof: does the core mechanism hold independently across every review run, not a pooled average |
 | `ablation.json` (alpha/recall/escalation vs x), per review | Ablation knee figure; the "why this x" answer |

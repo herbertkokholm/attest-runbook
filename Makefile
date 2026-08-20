@@ -75,6 +75,10 @@ ABLATE_OUT   ?= $(RESULTS_DIR)/ablation.json
 SENTINEL_SET       ?= data/sentinel_set.json
 SENTINEL_PER_TRACK ?= 10
 SENTINEL_SEED      ?= 43
+# Warn (not fail) in `validate`'s output when the sentinel's last recorded evaluation is
+# older than this many days -- matches the "re-run sentinel-check every few hours" cadence
+# below with headroom for an ordinary same-day run to never trip it.
+SENTINEL_MAX_STALENESS_DAYS ?= 1
 
 # Governance (runbook §6): empty by default -- a first `screen` on a fresh RUN_DIR logs an
 # initial_config changelog event. Set all three together to log a deliberate config change
@@ -95,7 +99,7 @@ APPROVER         ?=
 # a single review per run -- one track, one stratum -- kept as the honest default rather
 # than STRATIFY_NONE so both still work unchanged if a pooled multi-review run ever returns.
 STRATIFY_BY              ?= track
-AUDIT_SIZE_POLICY        ?= n=$(AUDIT_SIZE) exclusions (rule-of-three floor)
+AUDIT_SIZE_POLICY        ?= n=$(AUDIT_SIZE) exclusions (rule-of-three/Wilson floor + exact hypergeometric floor)
 ADJUDICATION_DESCRIPTION ?= Fully automatic, benchmark-only: adjudicate-from-gold resolves every ensemble-escalated decision to SYNERGY's published gold label, stamped reviewer="oracle-benchmark-gold"; no live human reviewer resolves escalations in this repo's pipeline. (The separate recall-audit plane's gold-scoring is described by AUDIT_SIZE_POLICY above, not here.)
 HARD_TRIGGER_CROSSINGS   ?= 2
 ADVISORY_ALPHA_THRESHOLD ?= 0.80
@@ -153,9 +157,13 @@ audit-draw: dirs
 audit-score: dirs
 	score-audit --todo $(AUDIT_TODO) --gold $(GOLD) --out $(AUDIT_DONE)
 
-## 5. Apply the scored audit labels to the run.
+## 5. Apply the scored audit labels to the run, stamped with the same
+##    oracle-benchmark-gold provenance as `adjudicate` (step 5b) -- score-audit never sees
+##    the ensemble's decision when looking up SYNERGY's published gold label, so --blinded
+##    is true, same as a real blinded human auditor would be.
 audit-apply:
-	attest audit-apply --run-dir $(RUN_DIR) --labels $(AUDIT_DONE)
+	attest audit-apply --run-dir $(RUN_DIR) --labels $(AUDIT_DONE) \
+		--reviewer oracle-benchmark-gold --blinded
 
 ## 5b. Resolve every ensemble-escalated decision (a tied or boundary-straddling vote
 ##     vector) from SYNERGY's published gold labels, stamped reviewer="oracle-benchmark-gold"
@@ -168,12 +176,16 @@ audit-apply:
 adjudicate:
 	adjudicate-from-gold --run-dir $(RUN_DIR) --gold $(GOLD)
 
-## 6. Assemble the validation record (alpha, recall floor + CI, escalation
+## 6. Assemble the validation record (alpha, recall floor + exact_floor + CI, escalation
 ##    rate, confusion) for the run directory's current epoch -- for the one review
 ##    this run screened. Never pooled across reviews; see review-summary below for
 ##    comparing multiple already-completed, independent runs side by side.
+##    --max-staleness-days reports (warns, does not fail) whenever the sentinel's last
+##    recorded evaluation is older than SENTINEL_MAX_STALENESS_DAYS -- the machine-checkable
+##    counterpart to the manual "re-run sentinel-check every few hours" cadence in §6.
 validate: dirs
 	attest validate --run-dir $(RUN_DIR) --input $(GOLD) --confidence $(CONFIDENCE) \
+		--max-staleness-days $(SENTINEL_MAX_STALENESS_DAYS) \
 		--out $(VALIDATE_OUT)
 
 ## 7. Run the x-sweep ablation (all 11 subsets at x = 4) over stored votes
