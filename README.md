@@ -162,10 +162,31 @@ even though a run's population never spans more than one track today.
 
 - Install: depend on `attest[all]` (git or local path) and `synergy-dataset`.
 - Copy `.env.example` to `.env` and set the vendors' API keys. `.env` is gitignored.
-- Four distinct vendor families, x = 4: Anthropic `claude-sonnet-5` (pinned), OpenAI and
-  Google (currently `TODO:pin-*-current-gen-dated-snapshot` — resolve before a real run),
-  Mistral `mistral-large-2512` (pinned). The Mistral vendor needs the `attest[mistral]`
-  extra (`mistralai>=2.9.1`, already included in `attest[all]`) and `MISTRAL_API_KEY`.
+- Four distinct vendor families, x = 4, each pinned to its vendor's same-level
+  (balanced production-flagship) current-generation model: Anthropic `claude-sonnet-5`,
+  Mistral `mistral-large-2512`, OpenAI `gpt-5.6-terra`, Google `gemini-3.1-pro-preview`.
+  See `reviews/README.md`'s "vendors (x = 4)" section for why these four specifically (the
+  level-matching rationale, and the price parity that motivated it) and a real,
+  non-hypothetical risk flag on the Google pin (`-preview`, no GA equivalent exists yet,
+  and its predecessor was deprecated on ~3 weeks' notice). The Mistral vendor needs the
+  `attest[mistral]` extra (`mistralai>=2.9.1`, already included in `attest[all]`) and
+  `MISTRAL_API_KEY`.
+- **`temperature` is not literally `0.0` for all four** — three of the four
+  current-generation models fight explicit sampling control in different ways (openai and
+  anthropic reject it outright unless worked around; google accepts it but the vendor warns
+  against it). See `reviews/README.md`'s "temperature" section for the per-vendor finding
+  and fix (`reasoning_effort`/`send_temperature`, new optional `VendorSpec` fields) — this
+  requires attest kernel commit `da977f3` or later, not yet on `herbertkokholm/attest`'s
+  pushed `main` as of 2026-08-24.
+- **Every `screen` run is submitted via the vendor Batch API, not synchronously** —
+  Makefile's `MODE` variable defaults to `batch` (always paired with `--wait`, so this
+  Makefile still blocks until votes are persisted, same downstream behavior as the sync
+  path). This is a deliberate cost choice, not a fallback: batch pricing is routinely ~50%
+  off the sync rate on every vendor `attest` supports here, and this pipeline has no
+  latency requirement that would justify paying sync's premium. `--mode batch` is
+  orthogonal to `batch_size` below (`--mode batch` is which API endpoint submits the
+  request; `batch_size` is how many records one request holds) — `batch_size` stays `1`
+  regardless of `MODE`.
 - Each `reviews/<review>/config.json`: vendors, per-vendor model+version, per-vendor prompt
   version, aggregation rule (only `"boundary_dispersion"` is implemented in the kernel
   today; `majority`/`unanimity` are recognized names but raise `NotImplementedError`),
@@ -249,10 +270,13 @@ run against a different review's subfolder; see the `Makefile`'s header comment.
    Not part of `make all`, since a run assumes it already exists. Freeze it
    (`git add -f`) only if/when a second epoch is opened for the same review — see §6.
 1. `make goldset` -> `build-goldset --reviews-file reviews/van_de_Schoot_2018/reviews.toml --project attest-paper --out data/gold.json`
-2. `make screen` -> `attest screen --input data/gold.json --config reviews/van_de_Schoot_2018/config.json --run-dir data/run --track van_de_Schoot_2018`
-   (the only paid, networked step; freeze `data/run/` after). `--track` is a free-text
-   provenance label only (keep it naming the same review as `REVIEWS_FILE`/`CONFIG`) —
-   which review's criteria actually get applied comes from `CONFIG`'s `default_prompt`,
+2. `make screen` -> `attest screen --input data/gold.json --config reviews/van_de_Schoot_2018/config.json --run-dir data/run --track van_de_Schoot_2018 --mode batch --wait`
+   (the only paid, networked step; freeze `data/run/` after). `--mode batch --wait` is the
+   Makefile's default (`MODE` var, §4) — submits via the vendor Batch API and blocks until
+   every batch is fetched and votes are persisted, at roughly half the sync per-token
+   price. `--track` is a free-text provenance label only (keep it naming the same review as
+   `REVIEWS_FILE`/`CONFIG`) — which review's criteria actually get applied comes from
+   `CONFIG`'s `default_prompt`,
    not this flag. Set `DETERMINISTIC_SEED=1` to smoke-test the whole pipeline with
    network-free, seeded raters first. This also runs `attest.ensemble.tau.validate_tau`
    against `CONFIG`'s `tau` and `x`, writes the proof to `data/run/tau_report.json`, and

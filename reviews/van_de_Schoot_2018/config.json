@@ -4,25 +4,30 @@
       "model": "claude-sonnet-5",
       "model_version": "TODO:capture-served-snapshot-before-freeze",
       "prompt_version": "v3",
-      "temperature": 0.0
+      "temperature": 0.0,
+      "send_temperature": false
     },
     "openai": {
-      "model": "TODO:pin-openai-current-gen-dated-snapshot",
-      "model_version": "TODO:capture-served-snapshot-before-freeze",
+      "model": "gpt-5.6-terra",
+      "model_version": "gpt-5.6-terra",
       "prompt_version": "v3",
-      "temperature": 0.0
+      "temperature": 0.0,
+      "reasoning_effort": "none",
+      "send_temperature": true
     },
     "google": {
-      "model": "TODO:pin-google-current-gen-dated-snapshot",
+      "model": "gemini-3.1-pro-preview",
       "model_version": "TODO:capture-served-snapshot-before-freeze",
       "prompt_version": "v3",
-      "temperature": 0.0
+      "temperature": 1.0,
+      "send_temperature": true
     },
     "mistral": {
       "model": "mistral-large-2512",
       "model_version": "TODO:capture-served-snapshot-before-freeze",
       "prompt_version": "v3",
-      "temperature": 0.0
+      "temperature": 0.0,
+      "send_temperature": true
     }
   },
   "aggregation": "boundary_dispersion",
@@ -63,6 +68,35 @@
     "this pipeline's instrument is one record per request -- on par with",
     "vendors/aggregation/tau, the same fixed instrument shared identically",
     "across all three reviews. Like every other shared field here, it is",
-    "hashed into ensemble_config_id; changing it opens a new epoch."
+    "hashed into ensemble_config_id; changing it opens a new epoch.",
+    "",
+    "openai/google model pins resolved (2026-08-24): 'gpt-5.6-terra' and",
+    "'gemini-3.1-pro-preview', replacing the prior TODO placeholders. See",
+    "../README.md's 'vendors (x = 4)' section for why these specific models --",
+    "same-level, balanced production-flagship match to claude-sonnet-5/",
+    "mistral-large-2512, not each vendor's cheapest or priciest tier -- and a",
+    "real risk flag on the Google pin: 'gemini-3.1-pro-preview' has no GA",
+    "equivalent yet and its predecessor was deprecated on ~3 weeks' notice --",
+    "re-check its availability before freezing a real run.",
+    "",
+    "temperature cleanup across all four vendors (2026-08-24): current-generation",
+    "claude-sonnet-5 rejects any explicit temperature/top_p/top_k value (HTTP 400,",
+    "confirmed against Anthropic's own current model docs) -- 'send_temperature':",
+    "false tells the kernel to omit 'temperature' from the Messages API request",
+    "entirely instead of sending a value the vendor rejects outright.",
+    "gpt-5.6-terra rejects a non-default temperature unless paired with",
+    "'reasoning_effort': 'none' -- confirmed live against this exact review's",
+    "default_prompt and a real gold-set record, not assumed from docs. Google's",
+    "gemini-3.1-pro-preview technically accepts temperature=0.0 but Google's own",
+    "guidance warns it degrades reasoning quality / can cause looping on Gemini",
+    "3.x thinking models, so this vendor alone is set to 'temperature': 1.0 (its",
+    "own recommended default) rather than forced to match the other three's 0.0.",
+    "mistral-large-2512 is unaffected -- not a reasoning-gated model, temperature",
+    "0.0 works as a normal parameter. See ../README.md's 'vendors (x = 4)' section",
+    "and reviews/README.md's 'vendors (x = 4)'/'temperature' sections for the full",
+    "per-vendor rationale. Both new fields are optional, hash-versioned into",
+    "ensemble_config_id only when set to something other than their no-op default",
+    "(reasoning_effort=None, send_temperature=True), and require attest kernel",
+    "commit da977f3 or later."
   ]
 }

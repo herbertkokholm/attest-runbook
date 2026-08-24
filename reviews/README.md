@@ -16,19 +16,42 @@ when"; this file only has to stay true to the current config.
 
 ## vendors (x = 4)
 
-Four distinct vendor families: Anthropic `claude-sonnet-5`, Mistral `mistral-large-2512` —
-both pinned, dated snapshots. OpenAI and Google are `TODO:pin-*-current-gen-dated-snapshot`
-— neither vendor's current-generation flagship could be resolved to a specific dated
-snapshot from documentation alone, so both stay as explicit TODOs rather than silently
-falling back to a floating alias name. Resolve both against each vendor's current model
-list before the real run — and specifically to each vendor's current-generation flagship,
-not just any dated snapshot: pairing an older-generation OpenAI/Google model against
-Anthropic's and Mistral's current-generation ones would confound "vendor" with "model
-tier" in the inter-vendor agreement and leave-one-out ablation.
+Four distinct vendor families, all pinned to a same-level, current-generation model —
+"same level" meaning each vendor's balanced production-flagship tier (not its cheapest
+fast/mini tier, and not its priciest specialized-reasoning tier above that), so the
+ensemble compares vendors, not vendor A's flagship against vendor B's budget tier:
 
-Anthropic's dateless `claude-sonnet-5` is not a floating alias needing a TODO of its own:
-per Anthropic's model-ID documentation, dateless IDs from the Claude 4.6 generation onward
-are themselves pinned snapshots, not evergreen pointers.
+- Anthropic `claude-sonnet-5` — Anthropic's balanced production tier (Opus/Fable sit above
+  it; Haiku below).
+- Mistral `mistral-large-2512` — Mistral's flagship general-purpose model.
+- OpenAI `gpt-5.6-terra` — the GPT-5.6 family's "balance intelligence and cost" tier (Sol is
+  the frontier tier above it, Luna the budget tier below), the closest level match to
+  Sonnet: both land at the same ~$2-3 input / ~$10-15 output per-1M-token price point, and
+  both occupy the "recommended for production" position in their vendor's lineup rather
+  than the top-of-line reasoning-flagship position.
+- Google `gemini-3.1-pro-preview` — Google's current flagship reasoning model, also priced
+  at the same ~$2 input / ~$12 output per-1M-token level as Sonnet/Terra.
+
+**Being this current also means fighting temperature control on three of the four** —
+current-generation "adaptive reasoning" models across vendors have broadly moved away from
+honoring an explicit sampling `temperature`. See "## temperature" below for the per-vendor
+finding and fix; it doesn't change which models are pinned here, only how each one is
+called.
+
+**Known risk, not a TODO:** `gemini-3.1-pro-preview` is, as its name states, a preview
+endpoint — Google has no GA release at this capability tier as of 2026-08-24. Its
+predecessor, `gemini-3-pro-preview`, was deprecated and shut down with about three weeks'
+notice (2026-03-09), so this pin carries a real chance of needing to be re-pinned to a
+newer preview or GA id mid-project, on Google's timeline rather than this project's. This
+is a genuine reproducibility risk for `ensemble_config_id` (a forced re-pin opens a new
+epoch, same as any other model change) — re-check `gemini-3.1-pro-preview`'s status before
+freezing a real run, and again before starting any subsequent review's run.
+
+Anthropic's dateless `claude-sonnet-5` is not a floating alias: per Anthropic's model-ID
+documentation, dateless IDs from the Claude 4.6 generation onward are themselves pinned
+snapshots, not evergreen pointers. OpenAI's `gpt-5.6-terra` is likewise a specific named
+release, not an evergreen alias (OpenAI's `gpt-5.6` bare alias, unlike `-terra`, does
+float — it currently routes to `gpt-5.6-sol` and isn't used here for that reason).
 
 The Mistral vendor requires the `attest[mistral]` extra (`mistralai>=2.9.1`, already
 included in `attest[all]`) and `MISTRAL_API_KEY`.
@@ -155,14 +178,44 @@ branches on a predicted/auto label, so it needs no zero-handling of its own.
 
 ## temperature
 
-Every vendor's `temperature = 0.0` (deterministic sampling), matching the kernel's own
-`data/example_config.json` convention for a screening task where reproducibility matters
-more than response diversity. `attest.provenance.config.VendorSpec.temperature` is
-required with no default — `_load_ensemble_config` reads `spec['temperature']` directly,
-so a vendor entry missing it raises `KeyError` at load time. It's actually sent as the
-live sampling parameter to every provider, not just recorded — and it's hash-sensitive:
-changing it changes `ensemble_config_id` and opens a new epoch, same as
-`model_version`/`prompt_version`.
+The design intent is deterministic sampling for a screening task where reproducibility
+matters more than response diversity, and `attest.provenance.config.VendorSpec.temperature`
+is required with no default — `_load_ensemble_config` reads `spec['temperature']` directly,
+so a vendor entry missing it raises `KeyError` at load time. It's hash-sensitive: changing
+it changes `ensemble_config_id` and opens a new epoch, same as `model_version`/`prompt_version`.
+
+**It is not literally `0.0` for all four vendors, because two of the four current-generation
+models don't let it be** (found live, 2026-08-24, not assumed from documentation):
+
+- **anthropic (`claude-sonnet-5`)**: `temperature: 0.0` plus `"send_temperature": false`.
+  Sonnet 5 (and the rest of the Claude 4.6+ generation) rejects any explicit
+  `temperature`/`top_p`/`top_k` value with HTTP 400, confirmed against Anthropic's own
+  current model documentation — no parameter analogous to OpenAI's `reasoning_effort`
+  re-enables it. `send_temperature: false`
+  (`attest.provenance.config.VendorSpec.send_temperature`, kernel commit `da977f3`+) tells
+  `AnthropicRater`/`AnthropicBatchRater` to omit `temperature` from the Messages API request
+  entirely rather than send a value the vendor rejects outright. `temperature` itself stays
+  `0.0` in the file as provenance of the *requested* value, even though it can't be honored.
+- **openai (`gpt-5.6-terra`)**: `temperature: 0.0` plus `"reasoning_effort": "none"`.
+  Confirmed live against this exact review's `default_prompt` and a real `data/gold.json`
+  record: `temperature=0.0` alone returns HTTP 400 ("Only the default (1) value is
+  supported"); adding `reasoning_effort="none"` makes the same call succeed.
+  `reasoning_effort` (`VendorSpec.reasoning_effort`, kernel commit `da977f3`+) is forwarded
+  to `OpenAIRater`/`OpenAIBatchRater` only when set, so this is additive, not a fallback.
+- **google (`gemini-3.1-pro-preview`)**: `temperature: 1.0`, deliberately *not* matching the
+  other three. Google's own guidance: "leaving temperature at 1.0... lower values degrade
+  reasoning quality... can cause looping" on Gemini 3.x thinking models — a real correctness
+  risk, not a hard 400 like the two above, so this one is set to the vendor's own recommended
+  default rather than fought.
+- **mistral (`mistral-large-2512`)**: unaffected, `temperature: 0.0` works as a normal
+  parameter — not a reasoning-gated model.
+
+Both `reasoning_effort` and `send_temperature` are optional `VendorSpec` fields, hashed into
+`ensemble_config_id` only when set to something other than their no-op default (`None` and
+`True` respectively) — a config that never sets them hashes identically to one written
+before these fields existed. Requires the local `attest` kernel clone's commit `da977f3` or
+later; not yet pushed to `herbertkokholm/attest`'s `main` as of 2026-08-24, so a fresh
+`pip install` of the `git+https://...` dependency won't yet pick this up — see README §4.
 
 ## confidence_threshold
 

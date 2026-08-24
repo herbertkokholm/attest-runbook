@@ -39,6 +39,13 @@ TRACK        ?= van_de_Schoot_2018
 # pipeline before spending on real vendor calls. Empty (default) = live.
 DETERMINISTIC_SEED ?=
 
+# Every real screen submits via the vendor Batch API by default (~50% off the sync
+# per-token price on every vendor used here), always paired with --wait so this Makefile
+# still blocks until votes are persisted -- same downstream behavior as sync, just cheaper.
+# Override to `sync` only for a reason that needs synchronous results (e.g. debugging a
+# single live call); DETERMINISTIC_SEED works under either mode.
+MODE ?= batch
+
 # "all" audits the entire screen-excluded population instead of a sample --
 # gold labels are free (SYNERGY is already published), so the recall floor
 # is exact rather than merely a floor. Override with a number for a smaller
@@ -132,9 +139,12 @@ goldset: dirs
 ##    explicit_config_change event when PREVIOUS_RUN_DIR/CHANGE_REASON/APPROVER are set.
 ##    $(CONFIG) sets attest.provenance.config.Config.batch_size ("b_e") to 1 explicitly --
 ##    one record per screening request, this pipeline's one instrument (runbook §4/§6:
-##    four vendors, one instruction, one record at a time).
+##    four vendors, one instruction, one record at a time). Submitted via $(MODE) (default
+##    batch, always --wait'd) -- batch pricing is routinely ~50% off sync on every vendor
+##    used here, and this pipeline has no latency reason to pay the sync premium.
 screen: dirs
 	attest screen --input $(GOLD) --config $(CONFIG) --run-dir $(RUN_DIR) --track $(TRACK) \
+		--mode $(MODE) --wait \
 		$(if $(DETERMINISTIC_SEED),--deterministic-seed $(DETERMINISTIC_SEED),) \
 		$(if $(PREVIOUS_RUN_DIR),--previous-run-dir $(PREVIOUS_RUN_DIR),) \
 		$(if $(CHANGE_REASON),--change-reason "$(CHANGE_REASON)",) \
