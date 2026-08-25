@@ -162,6 +162,9 @@ even though a run's population never spans more than one track today.
 
 - Install: depend on `attest[all]` (git or local path) and `synergy-dataset`.
 - Copy `.env.example` to `.env` and set the vendors' API keys. `.env` is gitignored.
+  Every `make` target auto-loads `.env` into its own recipe environment (Makefile's
+  `include .env` + `export`), so no manual `source .env`/`export` step is needed first --
+  `attest` itself still only ever reads `os.environ`, never `.env` directly.
 - Four distinct vendor families, x = 4, each pinned to its vendor's same-level
   (balanced production-flagship) current-generation model: Anthropic `claude-sonnet-5`,
   Mistral `mistral-large-2512`, OpenAI `gpt-5.6-terra`, Google `gemini-3.1-pro-preview`.

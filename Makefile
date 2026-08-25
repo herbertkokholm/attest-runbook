@@ -1,5 +1,22 @@
 .DEFAULT_GOAL := help
 
+# Auto-load vendor API keys from .env (runbook §4) into every target's environment, so
+# `make screen` etc. work right after `cp .env.example .env` + filling in values, with no
+# manual `source .env`/`export` step first. attest itself never reads .env -- every
+# vendor's rater still only ever reads os.environ (four vendors via their own SDK's fixed
+# env var name, e.g. ANTHROPIC_API_KEY; "openmodel" via config.json's own api_key_env
+# field, e.g. ALEX_API_KEY -- see reviews/README.md's "vendors (x = 5, Donners_2021 only)"
+# section) -- this block only arranges for that lookup to succeed under `make`, the same
+# way it would if the caller had exported these into their shell by hand. `include`
+# parses .env as Makefile syntax, so its own comments must be `#`, not `//`. Missing
+# .env (e.g. a fresh checkout before it's been copied from .env.example) is not an error
+# here -- a real `make screen` would just fail with each unconfigured vendor's own SDK
+# error instead.
+ifneq (,$(wildcard .env))
+include .env
+export $(shell sed -n 's/^\([A-Za-z_][A-Za-z0-9_]*\)=.*/\1/p' .env)
+endif
+
 # Best-effort commit of the installed `attest` package (see
 # attest.provenance.manifest.software_version), so every manifest this pipeline
 # produces records a real commit by default instead of an unset field. An

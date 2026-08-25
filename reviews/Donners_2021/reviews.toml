@@ -1,0 +1,11 @@
+# Paired with ./config.json (runbook §2, §6). See
+# reviews/van_de_Schoot_2018/reviews.toml for the full design rationale (why runs are
+# never pooled) and the complete candidate-review table -- not repeated in every pair.
+#
+# Unlike the other three reviews, this one runs at x = 5 (a 5th "openmodel" vendor,
+# hosted by the Alexandra Institute, alongside the usual four) -- see ./config.json's
+# _notes and reviews/README.md's "vendors (x = 5, Donners_2021 only)" section.
+
+reviews = [
+    "Donners_2021",
+]

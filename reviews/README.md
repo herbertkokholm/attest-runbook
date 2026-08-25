@@ -1,7 +1,12 @@
 # Shared ensemble-config rationale
 
 Every field in `reviews/<review>/config.json` except `default_prompt` is identical across
-all three reviews by design (README §4) — `vendors`, `aggregation`, `tau`, `batch_size`,
+`van_de_Schoot_2018`/`Appenzeller-Herzog_2019`/`Muthu_2021` by design (README §4) —
+**`Donners_2021` is a deliberate, stated exception**: it adds a 5th vendor (`openmodel`,
+hosted by the Alexandra Institute) alongside the usual four, and therefore also has its own
+`tau` re-derived for `x = 5` (see "## tau" below and that review's own `config.json`
+`_notes`, which carries everything specific to that divergence — this file still describes
+the shared `x = 4` instrument the other three reviews use). `vendors`, `aggregation`, `tau`, `batch_size`,
 `zero_policy`, `confidence_threshold` are the one fixed instrument being proven reliable
 across reviews, so it must not vary between them. This file explains what each of those
 shared fields means and why it's set the way it is, so that reasoning doesn't need
@@ -66,6 +71,44 @@ kernel checks `model_version` against what each vendor's own response reports an
 expose it) — anthropic/openai/mistral will hard-fail on the first live call until the
 TODOs are resolved.
 
+## vendors (x = 5, Donners_2021 only)
+
+`Donners_2021` adds a 5th ensemble member on top of the shared four above: vendor key
+`openmodel`, model `qwen3.5-397b`, served by the Alexandra Institute. There is no
+dedicated `"alexandra"` vendor factory in the kernel — `openmodel`
+(`attest.vendors.registry._build_openmodel`) is the kernel's one generic factory for any
+self-hosted, OpenAI-compatible `/chat/completions` endpoint; "Alexandra" names who hosts
+this particular deployment, not a distinct code path.
+
+Two `VendorSpec` fields exist only for this factory (kernel commit `0d52a20`+,
+`base_url`/`api_key_env` — the two-commit pair `0d52a20`/`747e5b7` also makes every other
+built-in factory reject either field being set, since `base_url` is hash-versioned and
+setting it on e.g. `anthropic` would silently open a new epoch with no actual effect):
+
+- `base_url`: `"https://inference.alexandra.dk/v1"` — **without** the trailing
+  `/chat/completions` that this repo's own gitignored `.env` records under `ALEX_URL`;
+  `OpenModelRater` appends that path itself, so including it in `base_url` would double it.
+  Hash-versioned, since a different serving stack behind the same nominal model name is
+  exactly the drift `model_version`/`check_model_version` exists to catch.
+- `api_key_env`: `"ALEX_API_KEY"` — the name of the environment variable to read the
+  bearer token from (real value lives only in `.env`), not the key itself. Deliberately
+  excluded from `ensemble_config_id` — it names where a secret lives, not something that
+  changes what the vendor samples.
+
+`reasoning_effort: "none"` mirrors `openai`'s treatment above, confirmed live against this
+exact endpoint (2026-08-25, see `OpenModelRater`'s own docstring): it disables a hidden
+reasoning phase outright (cutting completion tokens for a single-letter answer from
+roughly 950 to 2), while `"low"`/`"medium"`/`"high"` were indistinguishable from each other
+and from omitting the field — this endpoint exposes no graduated effort control, only
+on/off. This also matters for `OpenModelRater`'s own `max_tokens` default (`8`, not
+exposed via `VendorSpec`/`config.json`): at that default, the same hidden reasoning phase
+previously starved `content` to empty when not disabled.
+
+`temperature: 0.0` on `openmodel` is requested for the same determinism rationale as the
+rest of this ensemble, but — unlike every other vendor's temperature handling below — not
+yet confirmed live against a real call to this endpoint; re-verify before freezing a real
+run of `Donners_2021`.
+
 ## tau
 
 `tau = 0.5386751345948129` (~0.5387). A vendor's actual vote is one of three categorical
@@ -94,6 +137,20 @@ since the attainable-dispersion set depends on x, one fixed tau isn't behavioral
 comparable in strength across the swept subset sizes x' < 4 — xsweep attaches each
 subset's own `describe_tau()` to the ablation report and warns once per sweep, which is
 expected and needs no config change.
+
+**`Donners_2021` at x = 5** needs its own tau, derived by hand rather than via
+`resolve_tau(TIE_POLICY_ESCALATE, x=5)` directly: that tie policy requires an even `x` (a
+"clean tie" is defined as splitting votes exactly in half), which 5 is not. The same
+underlying primitive, `attest.ensemble.tau.reachable_dispersions(5)`, still applies: at
+x = 5 the attainable non-boundary dispersions are `0.0` (5-0/0-5 unanimous), `~0.4472`
+(4-1/1-4), and `~0.5477` (3-2/2-3) — and the 3-2 split is both the closest-to-even split
+*and* the maximum reachable value, the same property the even-x "tie" combo always has.
+Donners_2021's `tau = 0.497468076502562` is the midpoint of the two largest reachable
+values, `(0.4472135954999579 + 0.5477225575051661) / 2` — escalate only a 3-2 split,
+auto-label 4-1 and 5-0, the direct x = 5 analog of x = 4's "escalate a 2-2 tie, auto-label
+a 3-1 majority." Verified with `describe_tau(tau, x=5)`: zero warnings, canonical interval
+`(0.4472135954999579, 0.5477225575051661)`. See that review's own `config.json` `_notes`
+for the full derivation.
 
 ## batch_size
 
